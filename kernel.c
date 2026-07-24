@@ -1,8 +1,6 @@
-void __main() {
-    // Left blank for compiler compatibility
-}
 
-void main(); 
+
+void main();
 
 void _main() {
     main();
@@ -151,17 +149,20 @@ void remap_pic() {
     outb(0x21, 0x20); outb(0xA1, 0x28); 
     outb(0x21, 0x04); outb(0xA1, 0x02);
     outb(0x21, 0x01); outb(0xA1, 0x01);
-    outb(0x21, 0xFB);
+    // Keep the timer masked, but allow keyboard IRQ1 and mouse IRQ12.
+    outb(0x21, 0xF9);
     outb(0xA1, 0xEF);
 }
 
 extern void isr44();
+extern void isr33();
 
 void init_idt_mouse() {
     idt_reg.limit = (sizeof(idt_entry_t) * 256) - 1;
     idt_reg.base  = (unsigned int)&idt;
     for (int i = 0; i < 256; i++) set_idt_gate(i, 0, 0, 0);
     set_idt_gate(44, (unsigned int)isr44, 0x08, 0x8E);
+    set_idt_gate(33, (unsigned int)isr33, 0x08, 0x8E);
     
     unsigned int idt_address = (unsigned int)&idt_reg;
     asm volatile("lidt (%0)" : : "r"(idt_address));
@@ -236,6 +237,18 @@ void mouse_handler() {
         }
     }
     outb(0xA0, 0x20);
+    outb(0x20, 0x20);
+}
+
+void keyboard_handler() {
+    unsigned char status = inb(0x64);
+
+    // Drain keyboard data so the controller cannot leave IRQ1 pending.
+    // Mouse bytes belong to IRQ12 and must be consumed by mouse_handler.
+    if ((status & 0x01) && !(status & 0x20)) {
+        (void)inb(0x60);
+    }
+
     outb(0x20, 0x20);
 }
 
