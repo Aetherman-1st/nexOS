@@ -75,3 +75,11 @@ dkms.conf
 # Executables
 
 # End of https://www.toptal.com/developers/gitignore/api/c,c++
+
+### nexOS build artifacts ###
+*.bin
+*.tmp
+*.img
+*.iso
+floppy.img
+iso_root/

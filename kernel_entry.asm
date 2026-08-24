@@ -1,23 +1,23 @@
 [bits 32]
 global _start
-global isr44
-global isr33
+global _isr44
+global _isr33
 extern _main
-extern mouse_handler
-extern keyboard_handler
+extern _mouse_handler
+extern _keyboard_handler
 
 _start:
     call _main
     jmp $
 
-isr44:
+_isr44:
     pusha
-    call mouse_handler
+    call _mouse_handler
     popa
     iretd
 
-isr33:
+_isr33:
     pusha
-    call keyboard_handler
+    call _keyboard_handler
     popa
     iretd

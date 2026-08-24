@@ -13,10 +13,10 @@ nasm -f bin boot.asm -o boot.bin
 nasm -f elf32 kernel_entry.asm -o kernel_entry.o
 
 echo --- STEP 2: COMPILING C ---
-gcc -ffreestanding -m32 -c kernel.c -o kernel.o
+gcc -ffreestanding -m32 -fno-asynchronous-unwind-tables -c kernel.c -o kernel.o
 
 echo --- STEP 3: LINKING ---
-ld -m i386pe -N -e _start -Ttext 0x8000 -o kernel.tmp kernel_entry.o kernel.o
+ld -m i386pe -e _start -T link_pe.ld -o kernel.tmp kernel_entry.o kernel.o
 
 echo --- STEP 4: STRIPPING HEADERS ---
 objcopy -O binary kernel.tmp kernel.bin
