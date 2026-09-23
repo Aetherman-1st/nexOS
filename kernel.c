@@ -532,6 +532,21 @@ draw_str   (   13  , 234  ,  "TERMINAL" , COL_WHITE  )  ;
      draw_str   (	18   ,   164 , "BIN" ,	COL_WHITE )   ;
 }
 
+static char fm_names[8][13];
+static u32 fm_sizes[8];
+static int fm_isdir[8];
+static int fm_count = 0;
+static int fm_cb(const char *name, u32 size, int is_dir) {
+    if (fm_count >= 8) return 1;
+    int i = 0;
+    while (name[i] && i < 12) { fm_names[fm_count][i] = name[i]; i++; }
+    fm_names[fm_count][i] = 0;
+    fm_sizes[fm_count] = size;
+    fm_isdir[fm_count] = is_dir;
+    fm_count++;
+    return 0;
+}
+
 static  void   draw_file_manager  (	void	) {
         fill_rect  (   file_x  +   3	,   file_y + 4 , file_w   ,	file_h  , COL_TERMBG ) ;
        fill_rect (	file_x ,	file_y	,   file_w  ,  file_h	, COL_WINBG  )  ;
@@ -541,14 +556,12 @@ static  void   draw_file_manager  (	void	) {
       draw_str	( file_x   + file_w   -   25	,   file_y	+  6  ,	"X"	,	COL_WHITE	)	;
  draw_str	(  file_x  +  18  ,  file_y   +	48	,   "NAME" ,  COL_MUTED  )	;
       draw_str  (	file_x   +  270  ,   file_y +	48  ,  "TYPE"	,  COL_MUTED	)   ;
-	draw_str	(  file_x + 18   , file_y +   74  , "README.TXT" ,  COL_BLACK	)   ;
-draw_str  (   file_x + 270	,	file_y +  74	, "TEXT"  , COL_MUTED )	;
-	draw_str  (	file_x +   18	,  file_y	+  98   , "NOTES.TXT"   ,	COL_BLACK  ) ;
-		draw_str (	file_x + 270   ,	file_y +	98	,  "TEXT" ,   COL_MUTED )	;
-		draw_str	(   file_x	+	18	,	file_y +  122 ,  "PAINT.DAT"   ,   COL_BLACK   )   ;
-draw_str (	file_x	+	270  ,	file_y + 122	,   "APP DATA" ,   COL_MUTED  )   ;
-	draw_str (	file_x   + 18   ,   file_y + 146	,   "TERMINAL"  ,	COL_BLACK )  ;
-draw_str ( file_x   +  270	,	file_y +   146	,	"APP" , COL_MUTED   ) ;
+	for (int fi = 0; fi < fm_count && fi < 4; fi++) {
+	draw_str	(  file_x + 18   , file_y +   74 + fi * 24  , fm_names[fi] ,  COL_BLACK	)   ;
+	draw_str  (   file_x + 270	,	file_y +   74 + fi * 24	, fm_isdir[fi] ? "DIR" : "FILE"  , COL_MUTED )	;
+	}
+	if (fm_count == 0)
+	draw_str	(  file_x + 18   , file_y +   74  , "(EMPTY - NO DISK)" ,  COL_MUTED	)   ;
     }
 
      /* secret replies. if you're reading the source, you already found them. */
@@ -581,14 +594,19 @@ static void term_add_line(const char *s) {
     term_lines[term_nlines][i] = 0;
     term_nlines++;
 }
-static int term_ls_cb(const char *name, u32 size, int is_dir) {
-    char line[56]; int i = 0, j = 0;
+static int term_ls_cb(const char *name, u32 size, int is_dir) {    char line[56]; int i = 0, j = 0;
     while (name[j] && i < 40) { line[i] = name[j]; i++; j++; }
     if (is_dir && i < 54) { line[i++] = '/'; }
     line[i] = 0;
     (void)size;
     term_add_line(line);
     return 0;
+}
+
+static void fm_refresh(void) {
+    fm_count = 0;
+    if (g_fs.bs.bpb_sectors_per_cluster == 0) return;
+    fat32_list_dir(&g_fs, 2, fm_cb);
 }
 
 		static void  draw_terminal (  void )  {
@@ -1146,7 +1164,7 @@ for   (  int i  =	0  ; i	<	80   *   50	;   i ++	)	paint_canvas [   i	] = 0	;
 		} else	if  ( mx   >=	10  && mx  <   70	&&	my	>= 198	&&	my	<  260   )  {
     terminal_open =  1   ;	menu_open	=  0  ;	redraw =  1   ;
 } else if   (   mx   >=	8   && mx  <   72	&&	my  >=  276 &&   my <	340 )	{
- file_open = 1	;   menu_open  =   0   ;	redraw	=   1  ;
+ file_open = 1	;   menu_open  =   0   ;	fm_refresh();	redraw   =  1  ;
       }	else  if (	terminal_open &&  mx	>= terminal_x +   terminal_w	-   28	&&
 mx <	terminal_x  +  terminal_w	-  10  &&
 	my   >=	terminal_y +	5 &&	my  <  terminal_y  +	22   )  {
