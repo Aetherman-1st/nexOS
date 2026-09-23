@@ -358,6 +358,7 @@ static int painted_browser_open = 0;
 static int browser_x = 100, browser_y = 80, browser_w = 400, browser_h = 300;
 static	int   drag_target_x   ,	drag_target_y	;
         static int  dragging  =	0	, drag_off_x   , drag_off_y   ;
+static int drag_win = 0;
         static   int	tb_h   = 40 ;
     static char text_buf	[ 512   ]  ;
 		static	int  text_len =  0 ;
@@ -925,7 +926,7 @@ render_desktop   ( )  ;
 static u32 last_poll = 0;
 while   (  1  )  {
 int  redraw  =   0  ;
- if (pit_ticks - last_poll >= 10) { last_poll = pit_ticks; net_poll(); redraw = 1; }
+ if (pit_ticks - last_poll >= 10) { last_poll = pit_ticks; if (net_poll()) redraw = 1; }
  if (	text_updated   )  {	text_updated	= 0  ;  redraw   =	1   ; }
 
         if (	mouse_updated	)  {
@@ -994,35 +995,61 @@ mx <	terminal_x  +  terminal_w	-  10  &&
  		if (browser_open) draw_browser_window();
          }
          menu_open	=	0	;  redraw =  1 ;
+	}  else   if	( browser_open && mx >= browser_x && mx < browser_x + browser_w &&
+   my >= browser_y && my < browser_y + 24 ) {
+       if   ( mx >= browser_x + browser_w - 32 && mx < browser_x + browser_w - 6 &&
+   my >= browser_y + 3 && my < browser_y + 21 ) {
+     browser_open = 0;
+       dragging = 0; drag_win = 0;
+ 		redraw  =   1  ;
+ 		} else {
+ dragging = 1; drag_win = 5;
+ 		drag_off_x = mx - browser_x;
+       drag_off_y = my - browser_y;
+ }
+	}  else   if	( file_open && mx >= file_x && mx < file_x + file_w &&
+   my >= file_y && my < file_y + 28 ) {
+ dragging = 1; drag_win = 4;
+ 		drag_off_x = mx - file_x;
+       drag_off_y = my - file_y;
+ 	}  else   if	( terminal_open && mx >= terminal_x && mx < terminal_x + terminal_w &&
+   my >= terminal_y && my < terminal_y + 28 ) {
+ dragging = 1; drag_win = 3;
+ 		drag_off_x = mx - terminal_x;
+       drag_off_y = my - terminal_y;
+ 	}  else   if	( paint_open && mx >= paint_x && mx < paint_x + paint_w &&
+   my >= paint_y && my < paint_y + 27 ) {
+ dragging = 1; drag_win = 2;
+ 		drag_off_x = mx - paint_x;
+       drag_off_y = my - paint_y;
 	}  else   if	( win_open  &&  mx  >=	win_x   &&   mx	<	win_x	+   win_w	&&
    my	>= win_y  &&	my	<  win_y +  30	)  {
-      if   ( mx  >=	win_x +	win_w   -  22  &&  mx   <   win_x   +  win_w  -   4  &&
-  my   >=   win_y  +	4  &&   my   <   win_y   + 21 ) {
-    win_open =   0 ;
-      dragging   = 0 ;
-		redraw  =   1  ;
-		} else {
-dragging  =	1   ;
-		drag_off_x   =	mx	-	win_x   ;
-      drag_off_y  =  my	-	win_y  ;
- drag_target_x  =  win_x   ;
-drag_target_y =   win_y ;
-}
+       if   ( mx  >=	win_x +	win_w   -  22  &&  mx   <   win_x   +  win_w  -   4  &&
+   my   >=   win_y  +	4  &&   my   <   win_y   + 21 ) {
+     win_open =   0 ;
+       dragging   = 0 ; drag_win = 0 ;
+ 		redraw  =   1  ;
+ 		} else {
+ dragging  =	1   ; drag_win = 1 ;
+ 		drag_off_x   =	mx	-	win_x   ;
+       drag_off_y  =  my	-	win_y  ;
+ }
 	} else	if  (  menu_open   )  {
 		menu_open =  0  ;   redraw   =  1  ;
 }
   }
 
- if	( win_open   &&	dragging   && lbtn   )	{
+ if	( dragging   && drag_win != 0   && lbtn   )	{
      	int	nx	=	mx	- drag_off_x	;
- 	int   ny =	my  -   drag_off_y ;
+  	int   ny =	my  -   drag_off_y ;
          if  (  nx < 0	) nx   =   0 ;
  if  (	ny  <	0   )  ny	= 0   ;
- 	if  (	nx != win_x || ny != win_y )	{
- 	win_x = nx; win_y = ny;
- 	redraw = 1;
- 	}
- 	}
+  	if ( drag_win == 1 && (nx != win_x || ny != win_y)) { win_x = nx; win_y = ny; redraw = 1; }
+  	else if ( drag_win == 2 && (nx != paint_x || ny != paint_y)) { paint_x = nx; paint_y = ny; redraw = 1; }
+  	else if ( drag_win == 3 && (nx != terminal_x || ny != terminal_y)) { terminal_x = nx; terminal_y = ny; redraw = 1; }
+  	else if ( drag_win == 4 && (nx != file_x || ny != file_y)) { file_x = nx; file_y = ny; redraw = 1; }
+  	else if ( drag_win == 5 && (nx != browser_x || ny != browser_y)) { browser_x = nx; browser_y = ny; redraw = 1; }
+  	}
 
         if	(  paint_open   && lbtn  &&   mx >= paint_x  + 12  &&
 	mx <  paint_x  +   412 &&   my >=  paint_y  +  40   &&
@@ -1035,7 +1062,7 @@ int px =  (   mx  -  paint_x  -   12 )	/ 5   ;
     }
 }
 
-        if	(   ! lbtn	)	dragging   = 0   ;
+        if	(   ! lbtn	)	{ dragging   = 0; drag_win = 0; }
 	prev_lbtn	=   lbtn   ;
 if	( ! redraw	)  cur_redraw	(  mx	, my   )   ;
     }

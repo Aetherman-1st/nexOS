@@ -101,7 +101,7 @@ jmp 0x08:init_pm
 [bits 16]
 load_kernel:
 mov ah, 0x02
-mov al, 40
+mov al, 60
 mov ch, 0x00
 mov dh, 0x00
 mov cl, 0x02

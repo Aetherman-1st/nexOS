@@ -40,6 +40,6 @@ u32 net_get_gw(void);
 void net_arp_request(u32 gw);
 int net_http_get(u32 ip, const char *path, u8 *buf, u32 *sz);
 int net_dns_resolve(const char *host, u32 *ip);
-void net_poll(void);
+int net_poll(void);
 
 #endif

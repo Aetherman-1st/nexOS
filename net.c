@@ -159,9 +159,11 @@ int net_dns_resolve(const char *host, u32 *ip) {
     return 0;
 }
 
-void net_poll(void) {
+int net_poll(void) {
     u16 status = inw(RTL8139_BASE + 0x3C);
     if (status & 0x2000) {
         pkt_ready = 1;
+        return 1;
     }
+    return 0;
 }
