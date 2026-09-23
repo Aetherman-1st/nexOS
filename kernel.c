@@ -507,6 +507,7 @@ static	u32  paint_color =   0x0089B4FA ;
  	static	volatile	int	click_head	=	0	,	click_tail	=	0	;
  	static	volatile	int	click_qx	[	4	]	,	click_qy	[	4	]	;
  	static	volatile	u8	prev_mbtn	=	0	;
+ 	static	volatile	u32	sleep_req	=	0	;
 
  /* ── Mouse cursor save/restore (bitmap is 12 rows x 8 cols) ── */
 #define CUR_W 8
@@ -1343,6 +1344,16 @@ else   if	(  term_is	(  "YAZEED"  )	) term_message  = 4  ;
 	        term_add_line(line);
 	    } else term_add_line("ARP SENT TO GW");
 	}
+	else if ( term_starts ( "SLEEP " ) ) {
+	    term_message = 0;
+	    char num[12]; term_arg_after("SLEEP ", num, sizeof(num));
+	    u32 t = 0;
+	    for (int i = 0; num[i] >= '0' && num[i] <= '9'; i++) t = t * 10 + (u32)(num[i] - '0');
+	    if (t == 0) t = 100;
+	    if (t > 1000) t = 1000;
+	    sleep_req = t;
+	    term_add_line("SLEEPING...");
+	}
 	else if ( term_starts ( "FETCH" ) ) {
 	    term_message = 0;
 	    u32 sz = sizeof(http_buf);
@@ -1365,9 +1376,12 @@ else   if	(  term_is	(  "YAZEED"  )	) term_message  = 4  ;
 	}
        else	term_message =	2   ;
       term_len	= 0  ;	text_updated  =   1 ;
-   }  else if	( ( (   c	>=	'a'   &&  c	<=  'z'  ) || ( c >= 'A' && c <= 'Z' ) )  &&  term_len  <  159  )  {
- 	if ( c >= 'a' ) c -= 32;
+   }  else if	( term_len  <  159  )  {
+ 	if ( c >= 'a' && c <= 'z' ) c -= 32;
+ 	if ( ( c >= 'A' && c <= 'Z' ) || ( c >= '0' && c <= '9' ) ||
+ 	     c == ' ' || c == '.' || c == '_' || c == '/' || c == '-' ) {
  	term_buf  [	term_len ++   ]   =	c  ;   text_updated   =	1  ;
+ 	}
  	}
   }	else	if   ( c   == 8   )	{	if  ( text_len >  0  )   text_len	--   ;	text_updated = 1	;  }
 		else   if  (	c	==  10   )	{  if	(	text_len	<  511	)  text_buf   [	text_len	++ ]  =  '\n'  ;   text_updated =   1 ;  }
@@ -1407,6 +1421,7 @@ render_desktop   ( )  ;
 
 	/* the main loop. it loops, mostly. */
 static u32 last_poll = 0;
+ if (sleep_req) { u32 s_ = sleep_req; sleep_req = 0; task_sleep(s_); }
 while   (  1  )  {
 int  redraw  =   0  ;
  if (pit_ticks - last_poll >= 10) { last_poll = pit_ticks; if (net_poll()) redraw = 1; }
