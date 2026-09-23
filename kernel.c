@@ -324,6 +324,55 @@ static	void   clear_screen ( u32 color   )	{
 fill_rect (   0 , 0   ,  scr_w ,  scr_h   , color   )   ;
         }
 
+/* ── Softer shapes: rounded rects, gradients, dithered shadows ── */
+	static int  isqrt_int ( int n ) {
+	int r = 0;
+	while ((r + 1) * (r + 1) <= n) r++;
+	return r;
+	}
+
+	static u32 mix_color(u32 a, u32 b, int t) {
+	int r = (((a >> 16) & 0xFF) * (256 - t) + ((b >> 16) & 0xFF) * t) >> 8;
+	int g = (((a >> 8) & 0xFF) * (256 - t) + ((b >> 8) & 0xFF) * t) >> 8;
+	int bl = ((a & 0xFF) * (256 - t) + (b & 0xFF) * t) >> 8;
+	return ((u32)r << 16) | ((u32)g << 8) | (u32)bl;
+	}
+
+	static void fill_rounded(int x, int y, int w, int h, int r, u32 color) {
+	if (r < 1) { fill_rect(x, y, w, h, color); return; }
+	if (r * 2 > w) r = w / 2;
+	if (r * 2 > h) r = h / 2;
+	for (int row = 0; row < h; row++) {
+	    int dy = row < r ? r - 1 - row : (row >= h - r ? row - (h - r) : -1);
+	    int x0 = x, x1 = x + w;
+	    if (dy >= 0) {
+	        int dx = r - isqrt_int(r * r - dy * dy);
+	        x0 = x + dx; x1 = x + w - dx;
+	    }
+	    if (x1 > x0) fill_rect(x0, y + row, x1 - x0, 1, color);
+	}
+	}
+
+	static void fill_vgrad(int x, int y, int w, int h, u32 top, u32 bottom) {
+	if (h < 1) return;
+	for (int row = 0; row < h; row++) {
+	    int t = h < 2 ? 0 : (row * 255) / (h - 1);
+	    fill_rect(x, y + row, w, 1, mix_color(top, bottom, t));
+	}
+	}
+
+	static void draw_shadow(int x, int y, int w, int h) {
+	for (int row = 0; row < h; row++) {
+	    for (int col = 0; col < w; col++) {
+	        if ( ((row + col) & 1) == 0 ) continue;
+	        int px = x + 6 + col, py = y + 8 + row;
+	        if (px < 0 || py < 0 || px >= scr_w || py >= scr_h) continue;
+	        u32 bg = read_pixel(px, py);
+	        draw_pixel(px, py, mix_color(bg, 0x000000, 110));
+	    }
+	}
+	}
+
 /* ── 8x8 bitmap font ── */
     static	const  u8	font_unk [  8  ]  =	{	0xFF	,   0x81	,  0x81 , 0x81   ,   0x81  ,  0x81	,	0x81  ,	0xFF  } ;
 		static	const   u8	font_S   [	8   ]	=	{   0x3C ,   0x66  ,  0x60   , 0x3C	,  0x06  ,	0x66  ,   0x3C   ,	0x00   }  ;
