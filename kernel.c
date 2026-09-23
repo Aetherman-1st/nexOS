@@ -5,11 +5,13 @@
  * either way, welcome. good luck understanding it. i don't.
  */
 
-	typedef   unsigned	int	u32   ;
+typedef   unsigned	int	u32   ;
     typedef  unsigned short	u16  ;
 typedef  unsigned	char  u8 ;
 
-        void   main	(	void	) ;
+#include <stdarg.h>
+
+         void   main	(	void	) ;
 
 /* ── VBE boot parameter block at 0x5000 ── */
 #define VBE_LFB       (*(u32 volatile *)0x5000)
@@ -21,7 +23,140 @@ typedef  unsigned	char  u8 ;
 #define VBE_GRN_POS   (*(u8  volatile *)0x500C)
 #define VBE_BLU_POS   (*(u8  volatile *)0x500D)
 
- static  u8	*	lfb   ;
+/* ── Paging & Memory Allocator ── */
+
+#define PAGE_SIZE 0x1000
+#define NUM_PAGES 2048
+#define PAGE_DIR_ADDR 0x100000
+#define PAGE_TABLE_ADDR 0x101000
+#define MEM_BITMAP_ADDR 0x102000
+
+static u32 page_directory[1024] __attribute__((aligned(4096)));
+static u32 page_table[1024] __attribute__((aligned(4096)));
+static u8 mem_bitmap[NUM_PAGES / 8] __attribute__((aligned(4096)));
+static u32 heap_top = 0x200000;
+
+static void page_init(void) {
+    for (int i = 0; i < 1024; i++) page_directory[i] = 0;
+    for (int i = 0; i < 1024; i++) page_table[i] = 0;
+
+    /* Identity map kernel: 0x8000 to 0x100000 (pages 8-16) */
+    for (int i = 8; i < 16; i++) {
+        page_table[i] = (i * PAGE_SIZE) | 0x03;
+    }
+
+    /* Map backbuffer at 0x200000 */
+    int p = 0x200000 / PAGE_SIZE;
+    page_table[p] = 0x200000 | 0x03;
+
+    u32 vbe_lfb = (u32)VBE_LFB;
+    if (vbe_lfb) {
+        int vp = vbe_lfb / PAGE_SIZE;
+        if (vp < 1024) page_table[vp] = vbe_lfb | 0x03;
+    }
+
+    page_directory[0] = (u32)page_table | 0x03;
+    __asm__ volatile("mov %0, %%cr3" : : "r"(PAGE_DIR_ADDR));
+    u32 cr0;
+    __asm__ volatile("mov %%cr0, %0" : "=r"(cr0));
+    cr0 |= 0x80000000;
+    __asm__ volatile("mov %0, %%cr0" : : "r"(cr0));
+}
+
+static void mem_init(void) {
+    for (int i = 0; i < NUM_PAGES / 8; i++) mem_bitmap[i] = 0;
+    for (int i = 0; i < 16; i++) {
+        mem_bitmap[i / 8] |= (1 << (i % 8));
+    }
+}
+
+static void *kmalloc(u32 size) {
+    u32 pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+    u32 start = 0;
+    for (int i = 0; i < NUM_PAGES; i++) {
+        if (!(mem_bitmap[i / 8] & (1 << (i % 8)))) {
+            int j;
+            for (j = 0; j < pages && i + j < NUM_PAGES; j++) {
+                if (mem_bitmap[(i + j) / 8] & (1 << ((i + j) % 8))) break;
+            }
+            if (j == pages) { start = i; break; }
+        }
+    }
+    if (start == 0) return 0;
+    for (int i = 0; i < pages; i++) {
+        mem_bitmap[(start + i) / 8] |= (1 << ((start + i) % 8));
+        int p = (start + i) * PAGE_SIZE;
+        page_table[p / PAGE_SIZE] = p | 0x03;
+    }
+    return (void *)(start * PAGE_SIZE);
+}
+
+static void kfree(void *ptr) {
+    u32 addr = (u32)ptr;
+    u32 page = addr / PAGE_SIZE;
+    mem_bitmap[page / 8] &= ~(1 << (page % 8));
+}
+
+static void *kmalloc_aligned(u32 size, u32 align) {
+    u32 pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
+    u32 start = align / PAGE_SIZE;
+    for (u32 i = start; i < NUM_PAGES; i++) {
+        int j;
+        for (j = 0; j < pages && i + j < NUM_PAGES; j++) {
+            if (mem_bitmap[(i + j) / 8] & (1 << ((i + j) % 8))) break;
+        }
+        if (j == pages) { start = i; break; }
+    }
+    if (start * PAGE_SIZE < align) return 0;
+    for (u32 i = 0; i < pages; i++) {
+        mem_bitmap[(start + i) / 8] |= (1 << ((start + i) % 8));
+        page_table[(start + i)] = (start + i) * PAGE_SIZE | 0x03;
+    }
+    return (void *)(start * PAGE_SIZE);
+}
+
+/* ── String formatting ── */
+
+static int int_to_str(u32 n, char *buf, u32 base) {
+    if (n == 0) { buf[0] = '0'; buf[1] = 0; return 1; }
+    char tmp[32]; int len = 0;
+    while (n) { tmp[len++] = "0123456789ABCDEF"[n % base]; n /= base; }
+    for (int i = 0; i < len; i++) buf[i] = tmp[len - 1 - i];
+    buf[len] = 0;
+    return len;
+}
+
+static int snprintf(char *buf, u32 size, const char *fmt, ...) {
+    int pos = 0;
+    va_list args; va_start(args, fmt);
+    for (int i = 0; fmt[i] && pos < (int)size - 1; i++) {
+        if (fmt[i] == '%') {
+            i++;
+            if (fmt[i] == 'x') {
+                u32 v = va_arg(args, u32);
+                pos += int_to_str(v, buf + pos, 16);
+            } else if (fmt[i] == 'd') {
+                int v = va_arg(args, int);
+                if (v < 0) { buf[pos++] = '-'; v = -v; }
+                pos += int_to_str((u32)v, buf + pos, 10);
+            } else if (fmt[i] == 's') {
+                const char *s = va_arg(args, const char *);
+                while (*s && pos < (int)size - 1) buf[pos++] = *s++;
+            } else if (fmt[i] == 'c') {
+                buf[pos++] = (char)va_arg(args, int);
+            } else {
+                buf[pos++] = fmt[i];
+            }
+        } else {
+            buf[pos++] = fmt[i];
+        }
+    }
+    buf[pos] = 0;
+    va_end(args);
+    return pos;
+}
+
+  static  u8	*	lfb   ;
         static   u8 *   front_lfb	;
 		/* Reserved RAM below the usual kernel/stack area for an off-screen frame. */
 #define BACKBUFFER_ADDR 0x200000   /* free real estate. i hope nothing lives here. */
@@ -602,7 +737,9 @@ else  if (  c   >= ' '   &&  c   <=   '~' )	{ if  (	text_len   <  511   )   text
 
 	/* ── Entry ── */
 	void main   (	void  )	{
-   vbe_init  ( ) ;
+	page_init  ( ) ;
+	mem_init   ( ) ;
+    vbe_init  ( ) ;
 		init_font   (  )  ;
 	boot_splash  (  ) ;
 		win_x = (   scr_w	-   win_w )   / 2	;
