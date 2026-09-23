@@ -1572,6 +1572,7 @@ else  if (  c   >= ' '   &&  c   <=   '~' )	{ if  (	text_len   <  511   )   text
     fat32_init (&g_fs, g_disk_buf, 32);
     g_disk_init = 1;
     net_init   ( ) ;
+    usb_init   ( ) ;
     vbe_init  ( ) ;
 	backbuf = (u8 *)kmalloc((u32)scr_h * (u32)pitch);
 		init_font   (  )  ;
