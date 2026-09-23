@@ -741,10 +741,41 @@ outb   (	0x20  ,	0x11   ) ;  outb	(  0xA0   , 0x11  )  ;
 		outb (   0x21 ,   0x20 ) ;	outb   (  0xA1  ,  0x28   )	;
 		outb  (	0x21	,  0x04 )   ;	outb (	0xA1  ,	0x02	) ;
        outb (   0x21  ,   0x01   )  ;	outb	(	0xA1   ,	0x01   )   ;
-	outb  (   0x21 ,  0xF8 )	;	outb	(  0xA1  ,  0xEF	)	;
+	outb  (   0x21 ,  0xF8 )	;	outb	(  0xA1  ,  0xE7	)	;
 		}
 
-      extern void isr44   ( void	)	,  isr33	( void  )	,  isr32 ( void ) ;
+      extern void isr44   ( void	)	,  isr33	( void  )	,  isr32 ( void )  ,  isr43 ( void ) ;
+      extern void isr0(void), isr1(void), isr2(void), isr3(void);
+      extern void isr4(void), isr5(void), isr6(void), isr7(void);
+      extern void isr8(void), isr9(void), isr10(void), isr11(void);
+      extern void isr12(void), isr13(void), isr14(void), isr15(void);
+      extern void isr16(void), isr17(void), isr18(void), isr19(void);
+      extern void isr20(void), isr21(void), isr22(void), isr23(void);
+      extern void isr24(void), isr25(void), isr26(void), isr27(void);
+      extern void isr28(void), isr29(void), isr30(void), isr31(void);
+
+	static const char *exc_msg[] = {
+	"DIVIDE ERROR", "DEBUG", "NMI", "BREAKPOINT",
+	"OVERFLOW", "BOUND RANGE", "INVALID OPCODE", "NO COPROCESSOR",
+	"DOUBLE FAULT", "COPROCESSOR OVERRUN", "INVALID TSS", "SEGMENT MISSING",
+	"STACK FAULT", "GENERAL PROTECTION", "PAGE FAULT", "RESERVED",
+	"x87 FPU ERROR", "ALIGNMENT CHECK", "MACHINE CHECK", "SSE EXCEPTION",
+	"RESERVED", "RESERVED", "RESERVED", "RESERVED",
+	"RESERVED", "RESERVED", "RESERVED", "RESERVED",
+	"RESERVED", "RESERVED", "RESERVED", "RESERVED",
+	};
+
+	void	exception_handler	(	u32 vec, u32 err	)	{
+	asm volatile("cli");
+	clear_screen(COL_SCRN);
+	draw_str(scr_w/2 - 120, scr_h/2 - 40, "KERNEL PANIC", COL_RED);
+	if (vec < 32) draw_str(scr_w/2 - 120, scr_h/2 - 24, exc_msg[vec], COL_WHITE);
+	char ebuf[32];
+	snprintf(ebuf, sizeof(ebuf), "VEC %d ERR %x", (int)vec, err);
+	draw_str(scr_w/2 - 120, scr_h/2 - 8, ebuf, COL_MUTED);
+	draw_str(scr_w/2 - 120, scr_h/2 + 8, "SYSTEM HALTED - REBOOT TO CONTINUE", COL_MUTED);
+	for (;;) asm volatile("hlt");
+	}
 
 		static	volatile	u32	pit_ticks	=	0	;
 
@@ -764,7 +795,40 @@ outb   (	0x20  ,	0x11   ) ;  outb	(  0xA0   , 0x11  )  ;
 		idt_r .	lim  =  sizeof   (	idt_e	)	*   256	-   1 ;  idt_r	.   base	= ( u32 ) &   idt ;
 		for (	int   i   =  0	;	i <  256 ;   i   ++ )  set_gate (  i  ,   0  ,  0   ,   0  ) ;
   set_gate   (  44 , (   u32	)	isr44  , 0x08  ,	0x8E  ) ;	set_gate	(  33   ,	(	u32	)  isr33   ,  0x08   ,  0x8E )	;
+  set_gate   (  0 , (   u32	)	isr0  , 0x08  ,	0x8E  ) ;
+  set_gate   (  1 , (   u32	)	isr1  , 0x08  ,	0x8E  ) ;
+  set_gate   (  2 , (   u32	)	isr2  , 0x08  ,	0x8E  ) ;
+  set_gate   (  3 , (   u32	)	isr3  , 0x08  ,	0x8E  ) ;
+  set_gate   (  4 , (   u32	)	isr4  , 0x08  ,	0x8E  ) ;
+  set_gate   (  5 , (   u32	)	isr5  , 0x08  ,	0x8E  ) ;
+  set_gate   (  6 , (   u32	)	isr6  , 0x08  ,	0x8E  ) ;
+  set_gate   (  7 , (   u32	)	isr7  , 0x08  ,	0x8E  ) ;
+  set_gate   (  8 , (   u32	)	isr8  , 0x08  ,	0x8E  ) ;
+  set_gate   (  9 , (   u32	)	isr9  , 0x08  ,	0x8E  ) ;
+  set_gate   (  10 , (   u32	)	isr10  , 0x08  ,	0x8E  ) ;
+  set_gate   (  11 , (   u32	)	isr11  , 0x08  ,	0x8E  ) ;
+  set_gate   (  12 , (   u32	)	isr12  , 0x08  ,	0x8E  ) ;
+  set_gate   (  13 , (   u32	)	isr13  , 0x08  ,	0x8E  ) ;
+  set_gate   (  14 , (   u32	)	isr14  , 0x08  ,	0x8E  ) ;
+  set_gate   (  15 , (   u32	)	isr15  , 0x08  ,	0x8E  ) ;
+  set_gate   (  16 , (   u32	)	isr16  , 0x08  ,	0x8E  ) ;
+  set_gate   (  17 , (   u32	)	isr17  , 0x08  ,	0x8E  ) ;
+  set_gate   (  18 , (   u32	)	isr18  , 0x08  ,	0x8E  ) ;
+  set_gate   (  19 , (   u32	)	isr19  , 0x08  ,	0x8E  ) ;
+  set_gate   (  20 , (   u32	)	isr20  , 0x08  ,	0x8E  ) ;
+  set_gate   (  21 , (   u32	)	isr21  , 0x08  ,	0x8E  ) ;
+  set_gate   (  22 , (   u32	)	isr22  , 0x08  ,	0x8E  ) ;
+  set_gate   (  23 , (   u32	)	isr23  , 0x08  ,	0x8E  ) ;
+  set_gate   (  24 , (   u32	)	isr24  , 0x08  ,	0x8E  ) ;
+  set_gate   (  25 , (   u32	)	isr25  , 0x08  ,	0x8E  ) ;
+  set_gate   (  26 , (   u32	)	isr26  , 0x08  ,	0x8E  ) ;
+  set_gate   (  27 , (   u32	)	isr27  , 0x08  ,	0x8E  ) ;
+  set_gate   (  28 , (   u32	)	isr28  , 0x08  ,	0x8E  ) ;
+  set_gate   (  29 , (   u32	)	isr29  , 0x08  ,	0x8E  ) ;
+  set_gate   (  30 , (   u32	)	isr30  , 0x08  ,	0x8E  ) ;
+  set_gate   (  31 , (   u32	)	isr31  , 0x08  ,	0x8E  ) ;
   set_gate   (  32 , (   u32	)	isr32  , 0x08  ,	0x8E  ) ;
+  set_gate   (  43 , (   u32	)	isr43  , 0x08  ,	0x8E  ) ;
 		u32   a   =	(   u32	)	&  idt_r	;   asm	volatile  (	"lidt (%0)"	:  :	"r"   (	a   )	)  ;
         }
 
