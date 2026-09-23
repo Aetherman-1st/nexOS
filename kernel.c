@@ -18,6 +18,9 @@ extern fat32_fs_t g_fs;
 extern u8 g_disk_buf[];
 extern int g_disk_init;
 
+static volatile u32 pit_ticks;
+static u32 switches;
+
          void   main	(	void	) ;
 
 /* ── VBE boot parameter block at 0x5000 ── */
@@ -33,7 +36,7 @@ extern int g_disk_init;
 /* ── Paging & Memory Allocator ── */
 
 #define PAGE_SIZE 0x1000
-#define NUM_PAGES 4096
+#define NUM_PAGES 3840
 #define HEAP_START_PAGE 1024
 
 static u32 page_directory[1024] __attribute__((aligned(4096)));
@@ -149,7 +152,7 @@ static int snprintf(char *buf, u32 size, const char *fmt, ...) {
   static  u8	*	lfb   ;
         static   u8 *   front_lfb	;
 		/* Reserved RAM below the usual kernel/stack area for an off-screen frame. */
-#define BACKBUFFER_ADDR 0x200000   /* free real estate. i hope nothing lives here. */
+static	u8	*	backbuf	=	0	;
 static   int  scr_w  ,   scr_h , pitch ,	bpp ,	bpp_bytes ;
  static int   r_pos  ,	g_pos   ,   b_pos	;
 
@@ -743,7 +746,7 @@ static void draw_browser_window(void) {
 	/* Do not clear the whole framebuffer while dragging.  That made QEMU
        show the intermediate blank frame as visible flashing. */
  /* Render against the previous complete frame, then present it once. */
- 	lfb =   (	u8	*  )  BACKBUFFER_ADDR	;
+ 	lfb =   backbuf	;
        if  (   !   desktop_ready )	{
 		clear_screen  (	COL_BG )   ;
 	desktop_ready  =  1	;
