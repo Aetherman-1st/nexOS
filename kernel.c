@@ -1374,6 +1374,57 @@ else   if	(  term_is	(  "YAZEED"  )	) term_message  = 4  ;
 	    render_desktop();
 	    asm volatile("ud2");
 	}
+	else if ( term_is ( "TASKS" ) ) {
+	    term_message = 0;
+	    for (int ti = 0; ti < MAX_TASKS; ti++) {
+	        if (tasks[ti].state == TS_EMPTY) continue;
+	        char line[56];
+	        const char *st = "?";
+	        if (tasks[ti].state == TS_READY) st = "READY";
+	        else if (tasks[ti].state == TS_RUNNING) st = "RUN";
+	        else if (tasks[ti].state == TS_SLEEPING) st = "SLEEP";
+	        snprintf(line, sizeof(line), "%d %s %s", tasks[ti].id, st, tasks[ti].name);
+	        term_add_line(line);
+	    }
+	    if (term_nlines == 0) term_add_line("(NO TASKS)");
+	}
+	else if ( term_is ( "DMSG" ) ) {
+	    term_message = 0;
+	    u32 total = klog_pos < sizeof(klog) ? klog_pos : sizeof(klog);
+	    u32 start = klog_pos < sizeof(klog) ? 0 : klog_pos % sizeof(klog);
+	    int li = 0, ci = 0;
+	    static char dline[56];
+	    for (u32 k = 0; k < total && li < 4; k++) {
+	        char c = klog[(start + k) % sizeof(klog)];
+	        if (c == '\n' || ci >= 55) { dline[ci] = 0; term_add_line(dline); li++; ci = 0; if (c != '\n' && li < 4) dline[ci++] = c; }
+	        else dline[ci++] = c;
+	    }
+	    if (ci > 0 && li < 4) { dline[ci] = 0; term_add_line(dline); }
+	    if (term_nlines == 0) term_add_line("(LOG EMPTY)");
+	}
+	else if ( term_is ( "HEAP" ) ) {
+	    term_message = 0;
+	    u8 *t = (u8 *)malloc(64);
+	    int tok = 0;
+	    if (t) {
+	        for (int i = 0; i < 64; i++) t[i] = (u8)(i * 3 + 1);
+	        tok = 1;
+	        for (int i = 0; i < 64; i++) if (t[i] != (u8)(i * 3 + 1)) tok = 0;
+	        free(t);
+	    }
+	    term_add_line(tok ? "ALLOC SELFTEST OK" : "ALLOC FAILED");
+	    u32 ub = 0, fb = 0, nb = 0;
+	    for (blk_t *b = heap_head; b; b = b->next) {
+	        nb++;
+	        if (b->free) fb += b->size; else ub += b->size;
+	    }
+	    char line[56];
+	    if (!heap_head) term_add_line("HEAP EMPTY");
+	    else {
+	        snprintf(line, sizeof(line), "BLK %d USED %d FREE %d", (int)nb, (int)ub, (int)fb);
+	        term_add_line(line);
+	    }
+	}
 	else if ( term_is ( "BROWSER" ) ) {
 	    term_message = 0;
 	    browser_open = !browser_open;
