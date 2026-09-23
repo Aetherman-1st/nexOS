@@ -644,9 +644,8 @@ static void draw_browser_window(void) {
 	/* Do not clear the whole framebuffer while dragging.  That made QEMU
        show the intermediate blank frame as visible flashing. */
  /* Render against the previous complete frame, then present it once. */
-	lfb =   (	u8	*  )  BACKBUFFER_ADDR	;
-cur_restore	( )	;
-      if  (   !   desktop_ready )	{
+ 	lfb =   (	u8	*  )  BACKBUFFER_ADDR	;
+       if  (   !   desktop_ready )	{
 		clear_screen  (	COL_BG )   ;
 	desktop_ready  =  1	;
     }	else   {
@@ -679,17 +678,18 @@ painted_paint_open   = paint_open	;
  painted_terminal_open   =   terminal_open	;
  painted_file_open =	file_open  ;
  painted_browser_open = browser_open;
-	cur_ox  =   -  1	;
-        cur_save   (   mouse_x  ,	mouse_y  )	;
-       cur_draw (	mouse_x	,	mouse_y	) ;
-
-        for	(   int  row =	0	;  row	<	scr_h	; row	++ )	{
-     u8  *	src  = lfb	+ row	*   pitch   ;
-u8   * dst	=  front_lfb +  row	*   pitch   ;
-      for  (   int	i   =  0 ;	i  <	pitch   ;	i  ++	)  dst  [  i   ]  =	src [   i	] ;
- }
-		lfb   =   front_lfb ;
-       }
+         for	(   int  row =	0	;  row	<	scr_h	; row	++ )	{
+      u8  *	src  = lfb	+ row	*   pitch   ;
+ u8   * dst	=  front_lfb +  row	*   pitch   ;
+       for  (   int	i   =  0 ;	i  <	pitch   ;	i  ++	)  dst  [  i   ]  =	src [   i	] ;
+  }
+ 		lfb   =   front_lfb ;
+ 	/* Cursor lives only on the front buffer: the full copy above
+ 	   already wiped the old cursor, so forget it and draw fresh. */
+ 	cur_ox  =   -  1	;
+         cur_save   (   mouse_x  ,	mouse_y  )	;
+        cur_draw (	mouse_x	,	mouse_y	) ;
+        }
 
 	/* ── Interrupt & PS/2 ── */
 		typedef   struct  {	u16   lo ;	u16 sel ; u8  zero ;  u8 fl ;   u16  hi	;   } __attribute__	(	(  packed	)   )	idt_e  ;
