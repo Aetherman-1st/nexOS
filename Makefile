@@ -39,7 +39,7 @@ nexos.img: boot.bin kernel.bin
 	dd if=kernel.bin  of=$@ bs=512 seek=1 conv=notrunc 2>/dev/null
 
 run: nexos.img
-	$(QEMU) -drive format=raw,file=nexos.img -vga vmware -m 256
+	$(QEMU) -drive format=raw,file=nexos.img -device rtl8139,netdev=n0 -netdev user,id=n0 -vga vmware -m 256
 
 clean:
 	rm -f *.bin *.o *.tmp *.img

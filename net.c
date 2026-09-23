@@ -7,6 +7,8 @@ static u8 mac_addr[6] = {0x52, 0x54, 0x00, 0x12, 0x34, 0x56};
 static u8 pkt_bufs[PKT_BUF_COUNT][PKT_BUF_SIZE];
 static u8 pkt_ready = 0;
 
+u32 net_get_gw(void) { return gw_ip; }
+
 static u16 cksum(u16 *data, int len) {
     u32 sum = 0;
     for (int i = 0; i < len; i += 2) {
@@ -26,8 +28,7 @@ static u32 inl(u16 port) {
     return v;
 }
 
-void net_init(void) {
-    outw(RTL8139_BASE + 0x38, 0x0000);
+void net_init(void) {    outw(RTL8139_BASE + 0x38, 0x0000);
     outw(RTL8139_BASE + 0x3C, 0x0000);
     outl(RTL8139_BASE + 0x40, (u32)pkt_bufs[0]);
     outl(RTL8139_BASE + 0x44, (u32)pkt_bufs[1]);

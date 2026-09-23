@@ -482,8 +482,33 @@ static const char * term_msg [ ] =	{
 "yes it's nexOS. no filesystem. on purpose."	,  /* 7 */
 "hi. i've been awake since 2026." , /* 8 */
     "how? ...fine, held together by hope."	, /* 9 */
-	"sorry, i'm just a kernel. yazeed is closer."	,   /* 10 */
-	}  ;
+ 	"sorry, i'm just a kernel. yazeed is closer."	,   /* 10 */
+ 	}  ;
+
+static char term_lines[6][56];
+static int term_nlines = 0;
+static char browser_buf[2048];
+static int browser_len = 0;
+static u8 file_buf[4096];
+static u8 http_buf[2048];
+
+static void term_clear_lines(void) { term_nlines = 0; term_lines[0][0] = 0; }
+static void term_add_line(const char *s) {
+    if (term_nlines >= 6) return;
+    int i = 0;
+    while (s[i] && i < 55) { term_lines[term_nlines][i] = s[i]; i++; }
+    term_lines[term_nlines][i] = 0;
+    term_nlines++;
+}
+static int term_ls_cb(const char *name, u32 size, int is_dir) {
+    char line[56]; int i = 0, j = 0;
+    while (name[j] && i < 40) { line[i] = name[j]; i++; j++; }
+    if (is_dir && i < 54) { line[i++] = '/'; }
+    line[i] = 0;
+    (void)size;
+    term_add_line(line);
+    return 0;
+}
 
 		static void  draw_terminal (  void )  {
 	fill_rect  (	terminal_x	+  3  ,	terminal_y + 4	,   terminal_w	,   terminal_h  ,   COL_TERMBG  ) ;
@@ -493,11 +518,18 @@ static const char * term_msg [ ] =	{
     fill_rect   ( terminal_x	+ terminal_w   -	28  ,   terminal_y  +   5	, 18	,   17	,	COL_RED  )   ;
     draw_str ( terminal_x +	terminal_w - 25  ,   terminal_y  +   6	,	"X" ,	COL_TERMFG   ) ;
     draw_str	(   terminal_x  +   14	, terminal_y  +  48  ,   "nexOS terminal - type HELP"	,  COL_TERMFG   ) ;
-		if   (   term_message >= 1  &&	term_message	<=  10	)
-      draw_str  (   terminal_x   +  14  ,	terminal_y   +	64  , term_msg [  term_message ]  ,	COL_TERMFG ) ;
-    draw_str  (	terminal_x +	14	, terminal_y  +  88	,	">" ,	COL_TERMFG   ) ;
+	int tyy = terminal_y + 64;
+	if   (   term_message >= 1  &&	term_message	<=  10	) {
+      draw_str  (   terminal_x   +  14  ,	tyy  , term_msg [  term_message ]  ,	COL_TERMFG ) ;
+      tyy += 16;
+	}
+	for (int li = 0; li < term_nlines && li < 4; li++) {
+      draw_str  (   terminal_x   +  14  ,	tyy  , term_lines[li]  ,	COL_TERMFG ) ;
+      tyy += 16;
+	}
+    draw_str  (	terminal_x +	14	, tyy	,	">" ,	COL_TERMFG   ) ;
 	for  ( int  i =   0	;  i < term_len ;  i	++   )
-    draw_char	( terminal_x  +	26  +	i   *	8	,	terminal_y	+   88	,
+    draw_char	( terminal_x  +	26  +	i   *	8	,	tyy	,
       font_map   [  (  u8  )	term_buf [   i   ] ] ,	COL_TERMFG )   ;
 	}
 
@@ -577,7 +609,35 @@ static void draw_browser_window(void) {
     draw_str(browser_x + browser_w - 29, browser_y + 4, "X", COL_TEXT);
     fill_rect(browser_x + 4, browser_y + 28, browser_w - 8, 2, COL_ACCENT);
     fill_rect(browser_x + 4, browser_y + 32, browser_w - 8, browser_h - 40, COL_SCRN);
-    draw_str(browser_x + 8, browser_y + 36, "http://", COL_ACCENT);
+    if (browser_len <= 0) {
+        draw_str(browser_x + 8, browser_y + 36, "WELCOME TO nexOS WEB", COL_ACCENT);
+        draw_str(browser_x + 8, browser_y + 52, "OPEN TERMINAL, TYPE:", COL_TERMFG);
+        draw_str(browser_x + 8, browser_y + 68, "FETCH", COL_TERMFG);
+        draw_str(browser_x + 8, browser_y + 84, "THEN CLICK BROWSER", COL_TERMFG);
+        draw_str(browser_x + 8, browser_y + 100, "IN THE START MENU.", COL_TERMFG);
+        return;
+    }
+    int bx = browser_x + 8, by = browser_y + 36, col = 0, row = 0, intag = 0;
+    char line[48]; int li = 0;
+    for (int i = 0; i < browser_len && row < 8; i++) {
+        char c = browser_buf[i];
+        if (c == '<') { intag = 1; continue; }
+        if (c == '>') { intag = 0; continue; }
+        if (intag) continue;
+        if (c == '\r') continue;
+        if (c == '\n' || c == '\t') c = ' ';
+        if (c < 32 || c > 126) continue;
+        if (c == ' ' && col == 0) continue;
+        line[li++] = c; col++;
+        if (col >= 44 || i == browser_len - 1) {
+            line[li] = 0;
+            char out[48]; int k = 0;
+            while (line[k] && k < 47) { out[k] = line[k]; k++; }
+            out[k] = 0;
+            draw_str(bx, by + row * 16, out, COL_TERMFG);
+            row++; col = 0; li = 0;
+        }
+    }
 }
 
      static void  render_desktop	( void )   {
@@ -702,9 +762,34 @@ int	xd   = mp [	1 ]  ,   yd   =   mp   [	2	]  ;
 	}	;
      static  volatile   int kbd_up	=	0  ;
 
-	static	int  term_is	(   const   char   *   s   )   {
+ 	static	int  term_is	(   const   char   *   s   )   {
 int   i =   0   ;   while  (   s	[ i ]	&&   term_buf [ i   ]   == s  [ i   ]  )  i   ++   ;
 	return	s	[   i  ]	==  0   &&   i	==   term_len	;
+}
+
+	static int term_starts(const char *s) {
+int i = 0; while (s[i] && i < term_len && term_buf[i] == s[i]) i++;
+return s[i] == 0;
+}
+static void term_arg_after(const char *prefix, char *dst, int max) {
+int p = 0; while (prefix[p]) p++;
+int i = p, j = 0;
+while (i < term_len && term_buf[i] == ' ') i++;
+while (i < term_len && j < max - 1) { dst[j++] = term_buf[i++]; }
+dst[j] = 0;
+}
+static void term_show_file(const u8 *data, int len) {
+int li = 0, ci = 0, k = 0;
+term_clear_lines();
+static char line[56];
+for (k = 0; k < len && li < 4; k++) {
+    char c = (char)data[k];
+    if (c == '\r') continue;
+    if (c == '\n' || ci >= 55) { line[ci] = 0; term_add_line(line); li++; ci = 0; if (c != '\n') { line[ci++] = (c >= 32 && c < 127) ? c : '.'; } }
+    else line[ci++] = (c >= 32 && c < 127) ? c : '.';
+}
+if (ci > 0 && li < 4) { line[ci] = 0; term_add_line(line); }
+if (term_nlines == 0) term_add_line("(EMPTY)");
 }
 
 	void	keyboard_handler (	void	)	{
@@ -716,20 +801,60 @@ char	c   =  kb	[  sc	]  ;
 if ( terminal_open  )  {
 if	(	c ==   8	)  { if	( term_len	>	0	)   term_len  --	;	text_updated  =	1	;  }
   else  if   ( c	==	10	)  {
-	if (   term_is ( "HELP" ) )   term_message	=   1  ;
+ 	term_clear_lines();
+ 	if (   term_is ( "HELP" ) )   term_message	=   1  ;
 else if (   term_is  ( "ABOUT"   )  )   term_message   =   2   ;
-       else	if ( term_is	(   "CLEAR"	)  )	term_message  =	0  ;
-	else  if   (  term_is	(	"ECHO" )   )	term_message	=	2 ;
+        else	if ( term_is	(   "CLEAR"	)  )	term_message  =	0  ;
+ 	else  if   (  term_is	(	"ECHO" )   )	term_message	=	2 ;
 else  if (   term_is	(  "CREDITS" )	)   term_message  =   3   ;
 else   if	(  term_is	(  "YAZEED"  )	) term_message  = 4  ;
     else  if ( term_is  (   "OMARI"	) )   term_message  = 5   ;
    else  if  (	term_is	(	"SUDO"  )   )	term_message  =  6  ;
       else if (	term_is ( "NEXOS"   )   ) term_message	=   7  ;
-		else   if  (	term_is  (  "HELLO"	)	)   term_message =   8   ;
+ 		else   if  (	term_is  (  "HELLO"	)	)   term_message =   8   ;
         else	if	(   term_is	( "SECRET"	)	)  term_message   = 9 ;
-	else	if (	term_is	(  "GOD"	)  ) term_message =	10 ;
-      else	term_message =	2   ;
-    term_len	= 0  ;	text_updated  =   1	;
+ 	else	if (	term_is	(  "GOD"	)  ) term_message =	10 ;
+	else if ( term_is ( "LS" ) ) {
+	    term_message = 0;
+	    if (g_fs.bs.bpb_sectors_per_cluster == 0) term_add_line("NO DISK IMAGE");
+	    else if (fat32_list_dir(&g_fs, 2, term_ls_cb) != 0) term_add_line("READ ERR");
+	    else if (term_nlines == 0) term_add_line("(EMPTY DIR)");
+	}
+	else if ( term_starts ( "CAT " ) ) {
+	    term_message = 0;
+	    char name[16]; term_arg_after("CAT ", name, sizeof(name));
+	    if (name[0] == 0) term_add_line("USAGE: CAT FILE");
+	    else if (g_fs.bs.bpb_sectors_per_cluster == 0) term_add_line("NO DISK IMAGE");
+	    else {
+	        int n = fat32_read_file(&g_fs, name, file_buf, sizeof(file_buf) - 1);
+	        if (n <= 0) term_add_line("NOT FOUND");
+	        else { file_buf[n] = 0; term_show_file(file_buf, n); }
+	    }
+	}
+	else if ( term_is ( "PING" ) ) {
+	    term_message = 0;
+	    net_arp_request(net_get_gw());
+	    term_add_line("ARP SENT TO GW");
+	}
+	else if ( term_starts ( "FETCH" ) ) {
+	    term_message = 0;
+	    u32 sz = sizeof(http_buf);
+	    int r = net_http_get(0x5DB8D822, "/", http_buf, &sz);
+	    if (r == 0 && sz > 0) {
+	        int n = (sz < (u32)(sizeof(browser_buf) - 1)) ? (int)sz : (int)sizeof(browser_buf) - 1;
+	        for (int i = 0; i < n; i++) browser_buf[i] = (char)http_buf[i];
+	        browser_buf[n] = 0; browser_len = n;
+	        term_add_line("FETCH OK, SEE BROWSER");
+	        browser_open = 1;
+	    } else term_add_line("FETCH FAILED (NO NIC?)");
+	}
+	else if ( term_is ( "BROWSER" ) ) {
+	    term_message = 0;
+	    browser_open = !browser_open;
+	    term_add_line(browser_open ? "BROWSER OPEN" : "BROWSER CLOSED");
+	}
+       else	term_message =	2   ;
+      term_len	= 0  ;	text_updated  =   1 ;
    }  else if	(   c	>=	'a'   &&  c	<=  'z'  &&  term_len  <  159  ) {
 	term_buf  [	term_len ++   ]   =	c  - 32 ;   text_updated   =	1  ;
 	}

@@ -49,6 +49,7 @@ static u32 fat32_get_fat_entry(fat32_fs_t *fs, u32 cluster) {
 }
 
 int fat32_read_cluster(fat32_fs_t *fs, u32 cluster, u8 *buf) {
+    if (fs->bs.bpb_sectors_per_cluster == 0 || cluster < 2) return -1;
     u32 sector = fat32_cluster_to_sector(fs, cluster);
     u32 count = fs->bs.bpb_sectors_per_cluster;
     for (u32 i = 0; i < count; i++) {
@@ -58,6 +59,7 @@ int fat32_read_cluster(fat32_fs_t *fs, u32 cluster, u8 *buf) {
 }
 
 int fat32_list_dir(fat32_fs_t *fs, u32 cluster, int (*cb)(const char *, u32, int)) {
+    if (fs->bs.bpb_sectors_per_cluster == 0) return -1;
     u8 buf[512 * 32];
     fat32_read_cluster(fs, cluster, buf);
 

@@ -69,6 +69,7 @@ make clean        # removes build artifacts
 | `CAT` | Display file contents |
 | `PING` | Send ARP request |
 | `FETCH` | Execute HTTP GET request |
+| `BROWSER` | Open/close the browser window |
 | `YAZEED` | Display developer info |
 | `OMARI` | Display developer info |
 | `NEXOS` | Display nexOS info |
