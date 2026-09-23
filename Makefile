@@ -35,7 +35,7 @@ kernel.bin: kernel.tmp
 	$(OBJCOPY) -O binary kernel.tmp $@
 
 nexos.img: boot.bin kernel.bin
-	dd if=/dev/zero of=$@ bs=512 count=64 2>/dev/null
+	dd if=/dev/zero of=$@ bs=512 count=512 2>/dev/null
 	dd if=boot.bin    of=$@ bs=512 count=1 conv=notrunc 2>/dev/null
 	dd if=kernel.bin  of=$@ bs=512 seek=1 conv=notrunc 2>/dev/null
 

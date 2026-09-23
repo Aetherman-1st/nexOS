@@ -100,16 +100,40 @@ jmp 0x08:init_pm
 
 [bits 16]
 load_kernel:
-mov ah, 0x02
-mov al, 60
-mov ch, 0x00
-mov dh, 0x00
-mov cl, 0x02
+mov dword [dap_lba], 1
+mov word [dap_seg], 0x0800
+mov word [dap_off], 0
+mov byte [dap_left], 200
+.read_next:
+cmp byte [dap_left], 32
+jae .full
+movzx ax, byte [dap_left]
+mov [dap_count], ax
+jmp .do_read
+.full:
+mov word [dap_count], 32
+.do_read:
+mov ah, 0x42
 mov dl, [BOOT_DRIVE]
-mov bx, KERNEL_OFFSET
+mov si, dap
 int 0x13
 jc disk_error
+mov ax, [dap_count]
+add [dap_lba], ax
+mov bx, ax
+shl bx, 5
+add [dap_seg], bx
+sub [dap_left], al
+jnz .read_next
 ret
+dap:
+db 16, 0
+dap_count: dw 32
+dap_off: dw 0
+dap_seg: dw 0x0800
+dap_lba: dd 1
+dd 0
+dap_left: db 200
 
 disk_error:
 mov ax, 0x0b800
