@@ -218,10 +218,25 @@ u32 pixel =	(	(	color	>>  16	)   & 0xFF	)	<<  r_pos  |
 	(	( color	>>  8  ) &  0xFF	)   <<	g_pos |
    (	color   &  0xFF  )   <<	b_pos  ;
        for   (	int	row	=  y  ;  row  < y2 ;	row  ++  )   {
-      u32	*	dst =   (	u32	*	) ( lfb	+  row *	pitch   +   x   *  4  )	;
-       for (	int   col  = x  ;  col	<	x2  ; col   ++   )	* dst   ++   = pixel	;
-       }
- return   ;
+       u32	*	dst =   (	u32	*	) ( lfb	+  row *	pitch   +   x   *  4  )	;
+        for (	int   col  = x  ;  col	<	x2  ; col   ++   )	* dst   ++   = pixel	;
+        }
+  return   ;
+		}
+
+		/* 24bpp fast lane: pack once, then blast 3 bytes per pixel
+		   with no per-pixel call, bounds check, or mode switch. */
+	if	(  bpp ==  24   ) {
+	u8 r  = (	color   >>  16 )  &	0xFF  ,	g   = (	color  >>   8  )	&	0xFF ,	b =  color   &  0xFF   ;
+	u32  p  =  (	(  u32   ) r  <<	r_pos  ) |   ( (  u32	) g   <<  g_pos  )   | ( (  u32 )   b	<<  b_pos	)  ;
+	u8 b0 = p & 0xFF, b1 = (p >> 8) & 0xFF, b2 = (p >> 16) & 0xFF;
+        for   (	int	row	=  y  ;  row  < y2 ;	row  ++  )   {
+       u8	*	dst =   lfb	+  row *	pitch   +   x   *  3  ;
+        for (	int   col  = x  ;  col	<	x2  ; col   ++   )	{
+		dst[0] = b0; dst[1] = b1; dst[2] = b2; dst += 3;
+	}
+        }
+  return   ;
 		}
 
 		for  (	int row = y   ;	row  < y2   ;   row ++  )
@@ -597,7 +612,7 @@ draw_str (   title_x ,   scr_h	/   2  -  18  ,   "WELCOME TO nexOS"   , COL_WHIT
 	draw_3d_border (	bar_x  ,  bar_y  ,  220	, 12 , COL_BTN   , COL_MUTED , COL_BTN )	;
 	for  ( int	i	=	0	;	i   <=	10	; i ++  )  {
 		fill_rect   (   bar_x +	3   ,   bar_y +	3	,  i * 21  ,  6   ,	COL_ACCENT ) ;
-		for  (   volatile   u32	wait	= 0  ;	wait	< 33000000 ; wait   ++   ) asm volatile  (   "nop"  )	;
+		for  (   volatile   u32	wait	= 0  ;	wait	< 3000000 ; wait   ++   ) asm volatile  (   "nop"  )	;
 }
 }
 
@@ -678,11 +693,16 @@ painted_paint_open   = paint_open	;
  painted_terminal_open   =   terminal_open	;
  painted_file_open =	file_open  ;
  painted_browser_open = browser_open;
-         for	(   int  row =	0	;  row	<	scr_h	; row	++ )	{
-      u8  *	src  = lfb	+ row	*   pitch   ;
- u8   * dst	=  front_lfb +  row	*   pitch   ;
-       for  (   int	i   =  0 ;	i  <	pitch   ;	i  ++	)  dst  [  i   ]  =	src [   i	] ;
-  }
+ 	/* Present: one bulk rep movsl for the whole frame instead of
+ 	   ~2.3M byte writes through emulated MMIO. */
+ 	{
+ 	u32 total = (u32)scr_h * (u32)pitch;
+ 	u32 words = total / 4, tail = total % 4;
+ 	u8 *s = lfb, *d = front_lfb;
+ 	__asm__ volatile("cld; rep; movsl"
+ 		: "+S"(s), "+D"(d), "+c"(words) : : "memory");
+ 	for (u32 i = 0; i < tail; i++) d[i] = s[i];
+ 	}
  		lfb   =   front_lfb ;
  	/* Cursor lives only on the front buffer: the full copy above
  	   already wiped the old cursor, so forget it and draw fresh. */
@@ -991,14 +1011,16 @@ drag_target_y =   win_y ;
 }
   }
 
-if	( win_open   &&	dragging   && lbtn   )	{
-      int	nx	=	mx	- drag_off_x	;
-	int   ny =	my  -   drag_off_y ;
-        if  (  nx < 0	) nx   =   0 ;
-if  (	ny  <	0   )  ny	= 0   ;
-drag_target_x =	nx   ;
-      drag_target_y =   ny  ;
-	}
+ if	( win_open   &&	dragging   && lbtn   )	{
+     	int	nx	=	mx	- drag_off_x	;
+ 	int   ny =	my  -   drag_off_y ;
+         if  (  nx < 0	) nx   =   0 ;
+ if  (	ny  <	0   )  ny	= 0   ;
+ 	if  (	nx != win_x || ny != win_y )	{
+ 	win_x = nx; win_y = ny;
+ 	redraw = 1;
+ 	}
+ 	}
 
         if	(  paint_open   && lbtn  &&   mx >= paint_x  + 12  &&
 	mx <  paint_x  +   412 &&   my >=  paint_y  +  40   &&
@@ -1016,18 +1038,9 @@ int px =  (   mx  -  paint_x  -   12 )	/ 5   ;
 if	( ! redraw	)  cur_redraw	(  mx	, my   )   ;
     }
 
-if	(  redraw   )	render_desktop	(  )   ;
-
-	/* Ease toward the latest mouse position so packet timing does not
-           make the window jump from one hardware sample to the next. */
-		if   ( dragging  &&	(	win_x !=   drag_target_x  ||	win_y  !=  drag_target_y   )  )	{
-    int dx	=	drag_target_x	-  win_x	,   dy  =   drag_target_y -  win_y	;
-  win_x	+=   ( dx >	1	|| dx	< -   1 ) ?  dx  /  2 :	dx	;
-  win_y +=   (  dy  > 1  ||   dy   < - 1   )  ?  dy   / 2   :   dy   ;
-		render_desktop	(  )	;
-     }
-     }
-   }
+ if	(  redraw   )	render_desktop	(  )   ;
+      }
+    }
 
         /* the assembly needs someone to call. don't ask why there are two mains. */
 	void   _main  (   void   )   {   main	(   ) ;   }
