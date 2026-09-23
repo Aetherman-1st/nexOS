@@ -881,17 +881,17 @@ static void draw_browser_window(void) {
 		clear_screen  (	COL_BG )   ;
 	desktop_ready  =  1	;
     }	else   {
-		fill_rect  ( painted_win_x	- 2	,	painted_win_y   -  2 ,
-    win_w + 4 , win_h   +  4   , COL_BG   )  ;
+		fill_rect  ( painted_win_x	- 10	,	painted_win_y   -  10 ,
+    win_w + 26 , win_h   +  26   , COL_BG   )  ;
 if   (  painted_paint_open  )
-fill_rect	(	paint_x  -	4  ,  paint_y -	4	,   paint_w  +   8  , paint_h   +  8   , COL_BG  )	;
+fill_rect	(	paint_x  -	10  ,  paint_y -	10	,   paint_w  +   26  , paint_h   +  26   , COL_BG  )	;
 	if	( painted_terminal_open   )
-   fill_rect	(   terminal_x -	4   ,   terminal_y   -	4 ,
-	terminal_w   +	8	,  terminal_h   +	8  ,	COL_BG )   ;
+   fill_rect	(   terminal_x -	10   ,   terminal_y   -	10 ,
+	terminal_w   +	26	,  terminal_h   +	26  ,	COL_BG )   ;
 if (	painted_file_open   )
-      fill_rect   ( file_x	-	4	,   file_y   -  4	,	file_w   +  8   ,  file_h   +  8	,   COL_BG ) ;
+      fill_rect   ( file_x	-	10	,   file_y   -  10	,	file_w   +  26   ,  file_h   +  26	,   COL_BG ) ;
         if (	painted_browser_open	)
- fill_rect   ( browser_x -	4	,   browser_y   -  4	,	browser_w   +  8   ,  browser_h   +  8	,   COL_BG ) ;
+ fill_rect   ( browser_x -	10	,   browser_y   -  10	,	browser_w   +  26   ,  browser_h   +  26	,   COL_BG ) ;
         }
 		draw_desktop_icons	(   )	;
  if ( win_open  ) {
