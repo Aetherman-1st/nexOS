@@ -10,9 +10,24 @@ void fat32_init(fat32_fs_t *fs, u8 *buf, u32 lba_start) {
 
     ata_read_sector_data(lba_start, buf);
 
-    fs->bs.bpb_sectors_per_cluster  = bs->bpb_sectors_per_cluster;
+    u32 spc = bs->bpb_sectors_per_cluster;
+    u32 nfats = bs->bpb_number_of_fats;
+    if (spc != 1 && spc != 2 && spc != 4 && spc != 8 && spc != 16 && spc != 32 && spc != 64 && spc != 128)
+        spc = 0;
+    if (nfats != 1 && nfats != 2) nfats = 0;
+    if (spc == 0 || nfats == 0 || bs->bpb_sectors_per_fat == 0) {
+        fs->bs.bpb_sectors_per_cluster = 0;
+        fs->bs.bpb_number_of_fats = 0;
+        fs->bs.bpb_sectors_per_fat = 0;
+        fs->bs.bpb_fat_start_sector = 0;
+        fs->bs.root_dir_start = 0;
+        fs->bs.data_start = 0;
+        fs->bs.total_clusters = 0;
+        return;
+    }
+    fs->bs.bpb_sectors_per_cluster  = spc;
     fs->bs.bpb_reserved_sector_count = bs->bpb_reserved_sector_count;
-    fs->bs.bpb_number_of_fats       = bs->bpb_number_of_fats;
+    fs->bs.bpb_number_of_fats       = nfats;
     fs->bs.bpb_total_sectors_32     = bs->bpb_total_sectors_32;
     fs->bs.bpb_sectors_per_fat      = bs->bpb_sectors_per_fat;
     fs->bs.bpb_fat_start_sector     = bs->bpb_reserved_sector_count;

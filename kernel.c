@@ -33,37 +33,40 @@ extern int g_disk_init;
 /* ── Paging & Memory Allocator ── */
 
 #define PAGE_SIZE 0x1000
-#define NUM_PAGES 2048
-#define PAGE_DIR_ADDR 0x100000
-#define PAGE_TABLE_ADDR 0x101000
-#define MEM_BITMAP_ADDR 0x102000
+#define NUM_PAGES 4096
+#define HEAP_START_PAGE 1024
 
 static u32 page_directory[1024] __attribute__((aligned(4096)));
-static u32 page_table[1024] __attribute__((aligned(4096)));
+static u32 pt0[1024] __attribute__((aligned(4096)));
+static u32 pt1[1024] __attribute__((aligned(4096)));
+static u32 pt2[1024] __attribute__((aligned(4096)));
+static u32 pt3[1024] __attribute__((aligned(4096)));
+static u32 pt_lfb[1024] __attribute__((aligned(4096)));
 static u8 mem_bitmap[NUM_PAGES / 8] __attribute__((aligned(4096)));
-static u32 heap_top = 0x200000;
 
 static void page_init(void) {
-    for (int i = 0; i < 1024; i++) page_directory[i] = 0;
-    for (int i = 0; i < 1024; i++) page_table[i] = 0;
-
-    /* Identity map kernel: 0x8000 to 0x100000 (pages 8-16) */
-    for (int i = 8; i < 16; i++) {
-        page_table[i] = (i * PAGE_SIZE) | 0x03;
+    for (int i = 0; i < 1024; i++) {
+        pt0[i] = (i * PAGE_SIZE) | 0x03;
+        pt1[i] = (0x400000 + i * PAGE_SIZE) | 0x03;
+        pt2[i] = (0x800000 + i * PAGE_SIZE) | 0x03;
+        pt3[i] = (0xC00000 + i * PAGE_SIZE) | 0x03;
+        pt_lfb[i] = 0;
+        page_directory[i] = 0;
     }
-
-    /* Map backbuffer at 0x200000 */
-    int p = 0x200000 / PAGE_SIZE;
-    page_table[p] = 0x200000 | 0x03;
+    page_directory[0] = ((u32)pt0) | 0x03;
+    page_directory[1] = ((u32)pt1) | 0x03;
+    page_directory[2] = ((u32)pt2) | 0x03;
+    page_directory[3] = ((u32)pt3) | 0x03;
 
     u32 vbe_lfb = (u32)VBE_LFB;
-    if (vbe_lfb) {
-        int vp = vbe_lfb / PAGE_SIZE;
-        if (vp < 1024) page_table[vp] = vbe_lfb | 0x03;
+    if (vbe_lfb >= 0x1000000) {
+        u32 base = vbe_lfb & 0xFFC00000;
+        u32 dir = (vbe_lfb >> 22) & 0x3FF;
+        for (int i = 0; i < 1024; i++) pt_lfb[i] = (base + i * PAGE_SIZE) | 0x03;
+        page_directory[dir] = ((u32)pt_lfb) | 0x03;
     }
 
-    page_directory[0] = (u32)page_table | 0x03;
-    __asm__ volatile("mov %0, %%cr3" : : "r"(PAGE_DIR_ADDR));
+    __asm__ volatile("mov %0, %%cr3" : : "r"((u32)page_directory));
     u32 cr0;
     __asm__ volatile("mov %%cr0, %0" : "=r"(cr0));
     cr0 |= 0x80000000;
@@ -72,54 +75,34 @@ static void page_init(void) {
 
 static void mem_init(void) {
     for (int i = 0; i < NUM_PAGES / 8; i++) mem_bitmap[i] = 0;
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < HEAP_START_PAGE; i++) {
         mem_bitmap[i / 8] |= (1 << (i % 8));
     }
 }
 
 static void *kmalloc(u32 size) {
     u32 pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
-    u32 start = 0;
-    for (int i = 0; i < NUM_PAGES; i++) {
-        if (!(mem_bitmap[i / 8] & (1 << (i % 8)))) {
-            int j;
-            for (j = 0; j < pages && i + j < NUM_PAGES; j++) {
-                if (mem_bitmap[(i + j) / 8] & (1 << ((i + j) % 8))) break;
-            }
-            if (j == pages) { start = i; break; }
+    if (pages == 0) pages = 1;
+    for (int i = HEAP_START_PAGE; i + (int)pages <= NUM_PAGES; i++) {
+        u32 j;
+        for (j = 0; j < pages; j++) {
+            if (mem_bitmap[(i + j) / 8] & (1 << ((i + j) % 8))) break;
+        }
+        if (j == pages) {
+            for (j = 0; j < pages; j++)
+                mem_bitmap[(i + j) / 8] |= (1 << ((i + j) % 8));
+            return (void *)(i * PAGE_SIZE);
         }
     }
-    if (start == 0) return 0;
-    for (int i = 0; i < pages; i++) {
-        mem_bitmap[(start + i) / 8] |= (1 << ((start + i) % 8));
-        int p = (start + i) * PAGE_SIZE;
-        page_table[p / PAGE_SIZE] = p | 0x03;
-    }
-    return (void *)(start * PAGE_SIZE);
+    return 0;
 }
 
 static void kfree(void *ptr) {
+    if (!ptr) return;
     u32 addr = (u32)ptr;
     u32 page = addr / PAGE_SIZE;
+    if (page < HEAP_START_PAGE || page >= NUM_PAGES) return;
     mem_bitmap[page / 8] &= ~(1 << (page % 8));
-}
-
-static void *kmalloc_aligned(u32 size, u32 align) {
-    u32 pages = (size + PAGE_SIZE - 1) / PAGE_SIZE;
-    u32 start = align / PAGE_SIZE;
-    for (u32 i = start; i < NUM_PAGES; i++) {
-        int j;
-        for (j = 0; j < pages && i + j < NUM_PAGES; j++) {
-            if (mem_bitmap[(i + j) / 8] & (1 << ((i + j) % 8))) break;
-        }
-        if (j == pages) { start = i; break; }
-    }
-    if (start * PAGE_SIZE < align) return 0;
-    for (u32 i = 0; i < pages; i++) {
-        mem_bitmap[(start + i) / 8] |= (1 << ((start + i) % 8));
-        page_table[(start + i)] = (start + i) * PAGE_SIZE | 0x03;
-    }
-    return (void *)(start * PAGE_SIZE);
 }
 
 /* ── String formatting ── */

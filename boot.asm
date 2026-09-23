@@ -125,7 +125,7 @@ mov ss, ax
 mov es, ax
 mov fs, ax
 mov gs, ax
-mov ebp, 0x90000
+mov ebp, 0x1000000
 mov esp, ebp
 call KERNEL_OFFSET
 jmp $
