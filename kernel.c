@@ -108,6 +108,61 @@ static void kfree(void *ptr) {
     mem_bitmap[page / 8] &= ~(1 << (page % 8));
 }
 
+	typedef struct blk { u32 size; int free; struct blk *next; } blk_t;
+	static blk_t *heap_head = 0;
+
+	static void *malloc(u32 size) {
+	size = (size + 7) & ~7u;
+	if (size == 0) size = 8;
+	for (blk_t *b = heap_head; b; b = b->next) {
+	    if (b->free && b->size >= size) {
+	        if (b->size >= size + sizeof(blk_t) + 8) {
+	            blk_t *nb = (blk_t *)((u8 *)b + sizeof(blk_t) + size);
+	            nb->size = b->size - size - sizeof(blk_t);
+	            nb->free = 1;
+	            nb->next = b->next;
+	            b->size = size;
+	            b->next = nb;
+	        }
+	        b->free = 0;
+	        return (u8 *)b + sizeof(blk_t);
+	    }
+	}
+	u32 need = size + sizeof(blk_t);
+	u32 pages = (need + PAGE_SIZE - 1) / PAGE_SIZE;
+	u8 *mem = (u8 *)kmalloc(pages * PAGE_SIZE);
+	if (!mem) return 0;
+	blk_t *b = (blk_t *)mem;
+	b->size = pages * PAGE_SIZE - sizeof(blk_t);
+	b->free = 0;
+	b->next = heap_head;
+	heap_head = b;
+	if (b->size >= size + sizeof(blk_t) + 8) {
+	    blk_t *nb = (blk_t *)((u8 *)b + sizeof(blk_t) + size);
+	    nb->size = b->size - size - sizeof(blk_t);
+	    nb->free = 1;
+	    nb->next = b->next;
+	    b->size = size;
+	    b->next = nb;
+	}
+	return (u8 *)b + sizeof(blk_t);
+	}
+
+	static void free(void *ptr) {
+	if (!ptr) return;
+	blk_t *b = (blk_t *)((u8 *)ptr - sizeof(blk_t));
+	b->free = 1;
+	for (blk_t *c = heap_head; c && c->next; ) {
+	    blk_t *n = c->next;
+	    if (c->free && n->free &&
+	        (u8 *)c + sizeof(blk_t) + c->size == (u8 *)n) {
+	        c->size += sizeof(blk_t) + n->size;
+	        c->next = n->next;
+	    } else c = n;
+	}
+	}
+
+
 /* ── String formatting ── */
 
 static int int_to_str(u32 n, char *buf, u32 base) {
