@@ -324,6 +324,7 @@ static	void   clear_screen ( u32 color   )	{
 fill_rect (   0 , 0   ,  scr_w ,  scr_h   , color   )   ;
         }
 
+
 /* ── Softer shapes: rounded rects, gradients, dithered shadows ── */
 	static int  isqrt_int ( int n ) {
 	int r = 0;
@@ -929,20 +930,21 @@ static void draw_browser_window(void) {
  /* Render against the previous complete frame, then present it once. */
  	lfb =   backbuf	;
        if  (   !   desktop_ready )	{
-		clear_screen  (	COL_BG )   ;
-	desktop_ready  =  1	;
-    }	else   {
-		fill_rect  ( painted_win_x	- 10	,	painted_win_y   -  10 ,
-    win_w + 26 , win_h   +  26   , COL_BG   )  ;
+ 		if (wall_on) blit_wallpaper(0, 0, scr_w, scr_h);
+ 		else clear_screen  (	COL_BG )   ;
+ 	desktop_ready  =  1	;
+     }	else   {
+ 		blit_wallpaper  ( painted_win_x	- 10	,	painted_win_y   -  10 ,
+    win_w + 26 , win_h   +  26   )  ;
 if   (  painted_paint_open  )
-fill_rect	(	painted_paint_x  -	10  ,  painted_paint_y -	10	,   paint_w  +   26  , paint_h   +  26   , COL_BG  )	;
+blit_wallpaper	(	painted_paint_x  -	10  ,  painted_paint_y -	10	,   paint_w  +   26  , paint_h   +  26   )	;
 	if	( painted_terminal_open   )
-   fill_rect	(   painted_terminal_x -	10   ,   painted_terminal_y   -	10 ,
-	terminal_w   +	26	,  terminal_h   +	26  ,	COL_BG )   ;
+   blit_wallpaper	(   painted_terminal_x -	10   ,   painted_terminal_y   -	10 ,
+	terminal_w   +	26	,  terminal_h   +	26   )   ;
 if (	painted_file_open   )
-      fill_rect   ( painted_file_x	-	10	,   painted_file_y   -  10	,	file_w   +  26   ,  file_h   +  26	,   COL_BG ) ;
+      blit_wallpaper   ( painted_file_x	-	10	,   painted_file_y   -  10	,	file_w   +  26   ,  file_h   +  26	) ;
         if (	painted_browser_open	)
- fill_rect   ( painted_browser_x -	10	,   painted_browser_y   -  10	,	browser_w   +  26   ,  browser_h   +  26	,   COL_BG ) ;
+ blit_wallpaper   ( painted_browser_x -	10	,   painted_browser_y   -  10	,	browser_w   +  26   ,  browser_h   +  26	) ;
         }
 		draw_desktop_icons	(   )	;
  if ( win_open  ) {
