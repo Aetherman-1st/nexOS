@@ -29,6 +29,7 @@ kernel.o: kernel.c io.h ata.h fat32.h net.h
 
 kernel.tmp: kernel_entry.o ata.o fat32.o net.o kernel.o link.ld
 	$(LD) $(LDFLAGS) -o $@ kernel_entry.o ata.o fat32.o net.o kernel.o
+	@test "$$(nm $@ | awk '/ _start$$/{print $$1}')" = "00008000" || (echo "FATAL: _start not at 0x8000"; exit 1)
 
 kernel.bin: kernel.tmp
 	$(OBJCOPY) -O binary kernel.tmp $@
