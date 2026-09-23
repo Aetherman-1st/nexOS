@@ -1449,6 +1449,100 @@ else   if	(  term_is	(  "YAZEED"  )	) term_message  = 4  ;
 	        term_add_line(line);
 	    }
 	}
+	else if ( term_is ( "LSPCI" ) ) {
+	    term_message = 0;
+	    pci_dev_t devs[16];
+	    int n = pci_scan(devs, 16);
+	    char line[56];
+	    snprintf(line, sizeof(line), "PCI DEVICES %d", n);
+	    term_add_line(line);
+	    for (int i = 0; i < n; i++) {
+	        snprintf(line, sizeof(line), "%x:%x %s IRQ %d",
+	            devs[i].vendor, devs[i].device,
+	            pci_class_name(devs[i].class_code, devs[i].subclass),
+	            devs[i].irq);
+	        term_add_line(line);
+	        if (term_nlines >= 4) break;
+	    }
+	    if (n == 0) term_add_line("(NO PCI DEVICES)");
+	}
+	else if ( term_is ( "DISKINFO" ) ) {
+	    term_message = 0;
+	    if (ata_identify() != 0) term_add_line("NO DISK");
+	    else {
+	        char line[56];
+	        char model[41];
+	        for (int i = 0; i < 20; i++) {
+	            model[i * 2] = ata_ident_buf[i * 2 + 1];
+	            model[i * 2 + 1] = ata_ident_buf[i * 2];
+	        }
+	        model[40] = 0;
+	        int e = 39;
+	        while (e > 0 && model[e] == ' ') model[e--] = 0;
+	        snprintf(line, sizeof(line), "%s", model);
+	        term_add_line(line);
+	        snprintf(line, sizeof(line), "LBA28 %x LBA48 %d",
+	            ata_sectors_lo, ata_has_lba48);
+	        term_add_line(line);
+	    }
+	}
+	else if ( term_is ( "CPUID" ) ) {
+	    term_message = 0;
+	    u32 a, b, c, d;
+	    __asm__ volatile("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(0));
+	    char line[56];
+	    char vend[13];
+	    vend[0] = (b) & 0xFF; vend[1] = (b >> 8) & 0xFF;
+	    vend[2] = (b >> 16) & 0xFF; vend[3] = (b >> 24) & 0xFF;
+	    vend[4] = (d) & 0xFF; vend[5] = (d >> 8) & 0xFF;
+	    vend[6] = (d >> 16) & 0xFF; vend[7] = (d >> 24) & 0xFF;
+	    vend[8] = (c) & 0xFF; vend[9] = (c >> 8) & 0xFF;
+	    vend[10] = (c >> 16) & 0xFF; vend[11] = (c >> 24) & 0xFF;
+	    vend[12] = 0;
+	    snprintf(line, sizeof(line), "CPU %s", vend);
+	    term_add_line(line);
+	    __asm__ volatile("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "a"(1));
+	    snprintf(line, sizeof(line), "FAM %d MOD %d APIC %d",
+	        (int)((a >> 8) & 0xF), (int)((a >> 4) & 0xF), (int)((d >> 9) & 1));
+	    term_add_line(line);
+	}
+	else if ( term_is ( "ACPI" ) ) {
+	    term_message = 0;
+	    u32 rsdp = acpi_find_rsdp();
+	    char line[56];
+	    if (!rsdp) term_add_line("NO RSDP");
+	    else {
+	        u32 rsdt = *(u32 *)(rsdp + 16);
+	        int n = acpi_count_tables(rsdt);
+	        snprintf(line, sizeof(line), "RSDP %x TBL %d", rsdp, n);
+	        term_add_line(line);
+	        u32 madt = acpi_find_table(rsdt, "APIC");
+	        if (madt) {
+	            u8 cpus = 0;
+	            u32 lapic = acpi_madt_lapic(madt, &cpus);
+	            snprintf(line, sizeof(line), "LAPIC %x CPU %d", lapic, cpus);
+	            term_add_line(line);
+	        } else term_add_line("NO MADT");
+	    }
+	}
+	else if ( term_is ( "USB" ) ) {
+	    term_message = 0;
+	    usb_rescan();
+	    int n = usb_count();
+	    char line[56];
+	    snprintf(line, sizeof(line), "USB DEVICES %d", n);
+	    term_add_line(line);
+	    for (int i = 0; i < n; i++) {
+	        usb_dev_t *d = usb_get(i);
+	        if (!d) break;
+	        snprintf(line, sizeof(line), "%x:%x %s HID %d",
+	            d->vid, d->pid, d->lowspeed ? "LOW" : "FULL",
+	            d->hid_ep ? 1 : 0);
+	        term_add_line(line);
+	        if (term_nlines >= 4) break;
+	    }
+	    if (n == 0) term_add_line("(NO USB DEVICES)");
+	}
 	else if ( term_is ( "BROWSER" ) ) {
 	    term_message = 0;
 	    browser_open = !browser_open;
