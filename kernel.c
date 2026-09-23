@@ -935,6 +935,21 @@ int	xd   = mp [	1 ]  ,   yd   =   mp   [	2	]  ;
 'z'  ,	'x' ,	'c'  ,   'v'	,	'b'	,	'n'   ,	'm'	, ','	,  '.'  ,	'/'  ,	0	,   '*'   ,  0 ,  ' '	,
 	}	;
      static  volatile   int kbd_up	=	0  ;
+     static  volatile   int shift_down	=	0  ;
+     static  volatile   int caps_lock	=	0  ;
+
+	static char kb_shift_digit(char c) {
+	switch (c) {
+	case '1': return '!'; case '2': return '@'; case '3': return '#';
+	case '4': return '$'; case '5': return '%'; case '6': return '^';
+	case '7': return '&'; case '8': return '*'; case '9': return '(';
+	case '0': return ')'; case '-': return '_'; case '=': return '+';
+	case '[': return '{'; case ']': return '}'; case ';': return ':';
+	case '\'': return '"'; case '`': return '~'; case '\\': return '|';
+	case ',': return '<'; case '.': return '>'; case '/': return '?';
+	default: return c;
+	}
+	}
 
  	static	int  term_is	(   const   char   *   s   )   {
 int   i =   0   ;   while  (   s	[ i ]	&&   term_buf [ i   ]   == s  [ i   ]  )  i   ++   ;
@@ -970,8 +985,20 @@ if (term_nlines == 0) term_add_line("(EMPTY)");
 	u8  st  =   inb	( 0x64 ) ;
    if ( (  st  &	1	) && !	(	st & 0x20   )  )	{
    u8   sc  =  inb	(  0x60  ) ;
-        if   (   ! (  sc & 0x80	)  &&	sc   <  0x3A	)	{
+        if ( sc & 0x80 ) {
+        sc &= 0x7F;
+        if ( sc == 0x2A || sc == 0x36 ) shift_down = 0;
+        } else if ( sc == 0x2A || sc == 0x36 ) {
+        shift_down = 1;
+        } else if ( sc == 0x3A ) {
+        caps_lock = !caps_lock;
+        } else if ( sc < 0x3A ) {
 char	c   =  kb	[  sc	]  ;
+if ( c >= 'a' && c <= 'z' ) {
+if ( shift_down ^ caps_lock ) c -= 32;
+} else if ( shift_down ) {
+c = kb_shift_digit(c);
+}
 if ( terminal_open  )  {
 if	(	c ==   8	)  { if	( term_len	>	0	)   term_len  --	;	text_updated  =	1	;  }
   else  if   ( c	==	10	)  {
@@ -1029,9 +1056,10 @@ else   if	(  term_is	(  "YAZEED"  )	) term_message  = 4  ;
 	}
        else	term_message =	2   ;
       term_len	= 0  ;	text_updated  =   1 ;
-   }  else if	(   c	>=	'a'   &&  c	<=  'z'  &&  term_len  <  159  ) {
-	term_buf  [	term_len ++   ]   =	c  - 32 ;   text_updated   =	1  ;
-	}
+   }  else if	( ( (   c	>=	'a'   &&  c	<=  'z'  ) || ( c >= 'A' && c <= 'Z' ) )  &&  term_len  <  159  )  {
+ 	if ( c >= 'a' ) c -= 32;
+ 	term_buf  [	term_len ++   ]   =	c  ;   text_updated   =	1  ;
+ 	}
   }	else	if   ( c   == 8   )	{	if  ( text_len >  0  )   text_len	--   ;	text_updated = 1	;  }
 		else   if  (	c	==  10   )	{  if	(	text_len	<  511	)  text_buf   [	text_len	++ ]  =  '\n'  ;   text_updated =   1 ;  }
 else  if (  c   >= ' '   &&  c   <=   '~' )	{ if  (	text_len   <  511   )   text_buf   [  text_len  ++  ] =	c   ; text_updated  =  1 ;	}
