@@ -883,6 +883,7 @@ outb   (	0x20  ,	0x11   ) ;  outb	(  0xA0   , 0x11  )  ;
 		}
 
       extern void isr44   ( void	)	,  isr33	( void  )	,  isr32 ( void )  ,  isr43 ( void ) ;
+      extern void isr128  ( void  ) ;
       extern void isr0(void), isr1(void), isr2(void), isr3(void);
       extern void isr4(void), isr5(void), isr6(void), isr7(void);
       extern void isr8(void), isr9(void), isr10(void), isr11(void);
@@ -1186,6 +1187,7 @@ outb   (	0x20  ,	0x11   ) ;  outb	(  0xA0   , 0x11  )  ;
   set_gate   (  31 , (   u32	)	isr31  , 0x08  ,	0x8E  ) ;
   set_gate   (  32 , (   u32	)	isr32  , 0x08  ,	0x8E  ) ;
   set_gate   (  43 , (   u32	)	isr43  , 0x08  ,	0x8E  ) ;
+  set_gate   (  128 , (   u32	)	isr128  , 0x08  ,	0xEE  ) ;
 		u32   a   =	(   u32	)	&  idt_r	;   asm	volatile  (	"lidt (%0)"	:  :	"r"   (	a   )	)  ;
         }
 
