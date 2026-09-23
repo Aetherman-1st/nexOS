@@ -15,22 +15,28 @@ boot.bin: boot.asm
 kernel_entry.o: kernel_entry.asm
 	$(ASM) -f elf32 kernel_entry.asm -o $@
 
-kernel.o: kernel.c
+ata.o: ata.c ata.h io.h
+	$(CC) $(CFLAGS) -c ata.c -o $@
+
+fat32.o: fat32.c fat32.h ata.h io.h
+	$(CC) $(CFLAGS) -c fat32.c -o $@
+
+kernel.o: kernel.c io.h ata.h fat32.h
 	$(CC) $(CFLAGS) -c kernel.c -o $@
 
-kernel.tmp: kernel_entry.o kernel.o link.ld
-	$(LD) $(LDFLAGS) -o $@ kernel_entry.o kernel.o
+kernel.tmp: kernel_entry.o ata.o fat32.o kernel.o link.ld
+	$(LD) $(LDFLAGS) -o $@ kernel_entry.o ata.o fat32.o kernel.o
 
 kernel.bin: kernel.tmp
 	$(OBJCOPY) -O binary kernel.tmp $@
 
 nexos.img: boot.bin kernel.bin
 	dd if=/dev/zero of=$@ bs=512 count=64 2>/dev/null
-	dd if=boot.bin    of=$@ bs=512 count=1  conv=notrunc 2>/dev/null
-	dd if=kernel.bin  of=$@ bs=512 seek=1   conv=notrunc 2>/dev/null
+	dd if=boot.bin    of=$@ bs=512 count=1 conv=notrunc 2>/dev/null
+	dd if=kernel.bin  of=$@ bs=512 seek=1 conv=notrunc 2>/dev/null
 
 run: nexos.img
-	$(QEMU) -drive format=raw,file=nexos.img -vga std -m 64
+	$(QEMU) -drive format=raw,file=nexos.img -vga vmware -m 256
 
 clean:
 	rm -f *.bin *.o *.tmp *.img

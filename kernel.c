@@ -10,6 +10,12 @@ typedef   unsigned	int	u32   ;
 typedef  unsigned	char  u8 ;
 
 #include <stdarg.h>
+#include "ata.h"
+#include "fat32.h"
+
+extern fat32_fs_t g_fs;
+extern u8 g_disk_buf[];
+extern int g_disk_init;
 
          void   main	(	void	) ;
 
@@ -632,10 +638,7 @@ u8   * dst	=  front_lfb +  row	*   pitch   ;
 idt	[  n ]  .  lo   =  h & 0xFFFF  ;  idt  [   n  ]   . sel =   sel	;  idt   [   n   ]  .	zero  =   0   ;
       idt   [  n ]  .  fl	= fl  ;   idt  [	n ]	. hi	=	(  h  >>   16	) &   0xFFFF	;
 }
-	static inline	void	outb (	u16 p ,  u8	v )	{ asm	volatile   (	"outb %0,%1"  :  :   "a"   (	v	)	,   "Nd" (  p	)  )	;  }
-static	inline void outw	(	u16  p ,	u16  v   )  {   asm  volatile	(	"outw %0,%1"	:   :  "a"	(	v	)  ,  "Nd"  (	p )	)   ;	}
-		static   inline  u8 inb	( u16  p  )	{ u8  r  ;	asm	volatile	(   "inb %1,%0" :	"=a"	( r	)   :   "Nd"	(  p	) ) ;	return	r ;	}
-		/* the only thing this whole OS does politely. */
+	/* the only thing this whole OS does politely. */
     static   void	shutdown_system	(	void   ) {
 asm  volatile   (	"cli" )   ;
 		outw	(   0x604	, 0x2000	)	;  /* QEMU/Bochs ACPI power-button port */
@@ -739,6 +742,9 @@ else  if (  c   >= ' '   &&  c   <=   '~' )	{ if  (	text_len   <  511   )   text
 	void main   (	void  )	{
 	page_init  ( ) ;
 	mem_init   ( ) ;
+	ata_init   ( ) ;
+    fat32_init (&g_fs, g_disk_buf, 32);
+    g_disk_init = 1;
     vbe_init  ( ) ;
 		init_font   (  )  ;
 	boot_splash  (  ) ;
