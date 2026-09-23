@@ -714,15 +714,30 @@ outb   (	0x20  ,	0x11   ) ;  outb	(  0xA0   , 0x11  )  ;
 		outb (   0x21 ,   0x20 ) ;	outb   (  0xA1  ,  0x28   )	;
 		outb  (	0x21	,  0x04 )   ;	outb (	0xA1  ,	0x02	) ;
        outb (   0x21  ,   0x01   )  ;	outb	(	0xA1   ,	0x01   )   ;
-	outb  (   0x21 ,  0xF9 )	;	outb	(  0xA1  ,  0xEF	)	;
+	outb  (   0x21 ,  0xF8 )	;	outb	(  0xA1  ,  0xEF	)	;
 		}
 
-      extern void isr44   ( void	)	,  isr33	( void  )	;
+      extern void isr44   ( void	)	,  isr33	( void  )	,  isr32 ( void ) ;
+
+		static	volatile	u32	pit_ticks	=	0	;
+
+	void	timer_handler	(	void	)	{
+		pit_ticks++;
+		outb	(	0x20	,	0x20	)	;
+	}
+
+		static	void	pit_init	(	void	)	{
+		u16 div = 11932;
+		outb	(	0x43	,	0x36	)	;
+		outb	(	0x40	,	div & 0xFF	)	;
+		outb	(	0x40	,	(div >> 8) & 0xFF	)	;
+	}
 
 		static	void init_idt  (   void   ) {
 		idt_r .	lim  =  sizeof   (	idt_e	)	*   256	-   1 ;  idt_r	.   base	= ( u32 ) &   idt ;
 		for (	int   i   =  0	;	i <  256 ;   i   ++ )  set_gate (  i  ,   0  ,  0   ,   0  ) ;
   set_gate   (  44 , (   u32	)	isr44  , 0x08  ,	0x8E  ) ;	set_gate	(  33   ,	(	u32	)  isr33   ,  0x08   ,  0x8E )	;
+  set_gate   (  32 , (   u32	)	isr32  , 0x08  ,	0x8E  ) ;
 		u32   a   =	(   u32	)	&  idt_r	;   asm	volatile  (	"lidt (%0)"	:  :	"r"   (	a   )	)  ;
         }
 
@@ -878,15 +893,17 @@ else  if (  c   >= ' '   &&  c   <=   '~' )	{ if  (	text_len   <  511   )   text
 	boot_splash  (  ) ;
 		win_x = (   scr_w	-   win_w )   / 2	;
         win_y   = (   scr_h	-  win_h -  50   )	/	2  ;
-remap_pic   (	)  ;  init_idt	(	)   ;	init_ps2   (	)  ;
+remap_pic   (	)  ;  init_idt	(	)   ;	init_ps2   (	)  ;  ;		pit_init	(  )  ;
 		asm  volatile   (	"sti" )	;
 
 		int   prev_lbtn   =	0	;
 render_desktop   ( )  ;
 
 	/* the main loop. it loops, mostly. */
+static u32 last_poll = 0;
 while   (  1  )  {
 int  redraw  =   0  ;
+ if (pit_ticks - last_poll >= 10) { last_poll = pit_ticks; net_poll(); redraw = 1; }
  if (	text_updated   )  {	text_updated	= 0  ;  redraw   =	1   ; }
 
         if (	mouse_updated	)  {
