@@ -678,9 +678,9 @@ static int fm_cb(const char *name, u32 size, int is_dir) {
 }
 
 static  void   draw_file_manager  (	void	) {
-        fill_rect  (   file_x  +   3	,   file_y + 4 , file_w   ,	file_h  , COL_TERMBG ) ;
-       fill_rect (	file_x ,	file_y	,   file_w  ,  file_h	, COL_WINBG  )  ;
-  fill_rect (   file_x , file_y   ,	file_w  ,	28   ,  COL_TITLE	)	;
+        draw_shadow  (   file_x  ,  file_y  ,   file_w  ,  file_h  )  ;
+        fill_rounded (	file_x ,	file_y	,   file_w  ,  file_h	,  10	, COL_WINBG  )  ;
+   fill_vgrad (   file_x , file_y   ,	file_w  ,	28   ,  mix_color(COL_TITLE, 0x00CDD6F4, 70)	,  COL_TITLE	)	;
       draw_str   ( file_x   +   10   ,   file_y  + 8  ,	"FILE MANAGER"   ,	COL_WHITE  )   ;
 	fill_rect (	file_x   +   file_w   -   28 , file_y	+   5	,	18 , 17	,	COL_RED	)	;
       draw_str	( file_x   + file_w   -   25	,   file_y	+  6  ,	"X"	,	COL_WHITE	)	;
@@ -740,9 +740,9 @@ static void fm_refresh(void) {
 }
 
 		static void  draw_terminal (  void )  {
-	fill_rect  (	terminal_x	+  3  ,	terminal_y + 4	,   terminal_w	,   terminal_h  ,   COL_TERMBG  ) ;
-    fill_rect   (	terminal_x	,	terminal_y	, terminal_w , terminal_h ,  COL_TERMBG  ) ;
-    fill_rect	(  terminal_x  , terminal_y ,   terminal_w   ,	28	, COL_TITLE  ) ;
+	draw_shadow  (	terminal_x	,	terminal_y	, terminal_w , terminal_h  ) ;
+    fill_rounded   (	terminal_x	,	terminal_y	, terminal_w , terminal_h ,  10	,  COL_TERMBG  ) ;
+    fill_vgrad	(  terminal_x  , terminal_y ,   terminal_w   ,	28	, mix_color(COL_TITLE, 0x00CDD6F4, 70)	, COL_TITLE  ) ;
     draw_str   (	terminal_x  +  10  , terminal_y	+  8  ,	"TERMINAL"  , COL_TERMFG   ) ;
     fill_rect   ( terminal_x	+ terminal_w   -	28  ,   terminal_y  +   5	, 18	,   17	,	COL_RED  )   ;
     draw_str ( terminal_x +	terminal_w - 25  ,   terminal_y  +   6	,	"X" ,	COL_TERMFG   ) ;
@@ -763,8 +763,9 @@ static void fm_refresh(void) {
 	}
 
 	static void	draw_window   (   void	)  {
-		draw_3d_border	(  win_x  ,   win_y   , win_w   , win_h  ,	COL_WINBG	,   COL_WHITE   ,   COL_MUTED   )  ;
-	fill_rect   ( win_x  , win_y   ,  win_w ,   30 ,	COL_TITLE )  ;
+		draw_shadow	(  win_x  ,   win_y   , win_w   , win_h  )  ;
+	fill_rounded   ( win_x  , win_y   ,  win_w ,  win_h ,  10 ,	COL_WINBG )  ;
+	fill_vgrad   ( win_x  , win_y   ,  win_w ,   30 ,	mix_color(COL_TITLE, 0x00CDD6F4, 70) ,	COL_TITLE )  ;
 draw_str ( win_x +   8  ,   win_y	+  8   , "nexOS v0.1"	,  COL_WHITE  )	;
    fill_rect  (   win_x + win_w   -	22	,	win_y  +  4	,	18  , 17   , COL_RED	)	;
 		draw_str  (  win_x   +  win_w	-	19  ,   win_y	+  5  ,  "X"	,   COL_WHITE  )	;
@@ -785,9 +786,9 @@ if	(	tx   + 10 >  max_x )	{  tx	=	win_x   +  10   ;  ty  +=   12   ;	}
 	}
 
 	static   void draw_paint	(	void )  {
-	draw_3d_border  (   paint_x	,  paint_y ,   paint_w ,   paint_h   ,   COL_WINBG   ,
-	COL_WHITE ,	COL_MUTED )  ;
-      fill_rect	(  paint_x ,  paint_y   ,	paint_w  ,	27 ,   COL_TITLE  )  ;
+	draw_shadow  (   paint_x	,  paint_y ,   paint_w ,   paint_h  )  ;
+	fill_rounded   (   paint_x	,  paint_y ,   paint_w ,   paint_h   ,  10	,   COL_WINBG   )  ;
+      fill_vgrad	(  paint_x ,  paint_y   ,	paint_w  ,	27 ,   mix_color(COL_TITLE, 0x00CDD6F4, 70)	, COL_TITLE  )  ;
        draw_str (  paint_x +   10 , paint_y   +	8  , "PAINT"	,	COL_WHITE   )   ;
 		fill_rect   (   paint_x   +  paint_w -  28 ,	paint_y	+   5  ,	18   ,   17 ,	COL_RED )	;
 draw_str  (	paint_x  +	paint_w   -  25   ,	paint_y	+ 6	,  "X" ,	COL_WHITE	)   ;
