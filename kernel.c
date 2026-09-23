@@ -13,6 +13,9 @@ typedef  unsigned	char  u8 ;
 #include "ata.h"
 #include "fat32.h"
 #include "net.h"
+#include "pci.h"
+#include "acpi.h"
+#include "usb.h"
 
 extern fat32_fs_t g_fs;
 extern u8 g_disk_buf[];
