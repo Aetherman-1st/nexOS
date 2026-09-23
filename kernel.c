@@ -48,6 +48,10 @@ static u32 pt1[1024] __attribute__((aligned(4096)));
 static u32 pt2[1024] __attribute__((aligned(4096)));
 static u32 pt3[1024] __attribute__((aligned(4096)));
 static u32 pt_lfb[1024] __attribute__((aligned(4096)));
+static u32 pt_win0[1024] __attribute__((aligned(4096)));
+static u32 pt_win1[1024] __attribute__((aligned(4096)));
+#define WIN0_VADDR 0x1000000
+#define WIN1_VADDR 0x1400000
 static u8 mem_bitmap[NUM_PAGES / 8] __attribute__((aligned(4096)));
 
 static void page_init(void) {
@@ -78,6 +82,18 @@ static void page_init(void) {
     cr0 |= 0x80000000;
     __asm__ volatile("mov %0, %%cr0" : : "r"(cr0));
 }
+
+	void *map_window(int which, u32 phys) {
+	u32 base = phys & 0xFFC00000;
+	u32 *pt = which ? pt_win1 : pt_win0;
+	u32 dir = which ? 5 : 4;
+	for (int i = 0; i < 1024; i++) pt[i] = (base + i * PAGE_SIZE) | 0x03;
+	page_directory[dir] = ((u32)pt) | 0x03;
+	u32 cr3;
+	__asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
+	__asm__ volatile("mov %0, %%cr3" : : "r"(cr3));
+	return (void *)(WIN0_VADDR + (which ? 0x400000 : 0) + (phys - base));
+	}
 
 static void mem_init(void) {
     for (int i = 0; i < NUM_PAGES / 8; i++) mem_bitmap[i] = 0;
