@@ -563,9 +563,13 @@ static   int paint_ready = 0	;
 static	u32  paint_color =   0x0089B4FA ;
   static  int	desktop_ready	=  0 ;
        static   int   painted_win_x	,	painted_win_y  ;
-      static	int	painted_paint_open	=	0  ;
-	static  int  painted_terminal_open =	0 ;
-		static   int	painted_file_open  = 0  ;
+       static	int	painted_paint_open	=	0  ;
+ 	static  int  painted_terminal_open =	0 ;
+ 		static   int	painted_file_open  = 0  ;
+ 	static	int	painted_paint_x	,	painted_paint_y  ;
+ 	static	int	painted_terminal_x	,	painted_terminal_y  ;
+ 	static	int	painted_file_x	,	painted_file_y  ;
+ 	static	int	painted_browser_x	,	painted_browser_y  ;
   static volatile	int	mouse_x  =   400	,   mouse_y	= 300 ;
      static  volatile   int	mouse_updated   =	0  ;
  		static   volatile   u8  mouse_buttons   =	0   ;
@@ -884,14 +888,14 @@ static void draw_browser_window(void) {
 		fill_rect  ( painted_win_x	- 10	,	painted_win_y   -  10 ,
     win_w + 26 , win_h   +  26   , COL_BG   )  ;
 if   (  painted_paint_open  )
-fill_rect	(	paint_x  -	10  ,  paint_y -	10	,   paint_w  +   26  , paint_h   +  26   , COL_BG  )	;
+fill_rect	(	painted_paint_x  -	10  ,  painted_paint_y -	10	,   paint_w  +   26  , paint_h   +  26   , COL_BG  )	;
 	if	( painted_terminal_open   )
-   fill_rect	(   terminal_x -	10   ,   terminal_y   -	10 ,
+   fill_rect	(   painted_terminal_x -	10   ,   painted_terminal_y   -	10 ,
 	terminal_w   +	26	,  terminal_h   +	26  ,	COL_BG )   ;
 if (	painted_file_open   )
-      fill_rect   ( file_x	-	10	,   file_y   -  10	,	file_w   +  26   ,  file_h   +  26	,   COL_BG ) ;
+      fill_rect   ( painted_file_x	-	10	,   painted_file_y   -  10	,	file_w   +  26   ,  file_h   +  26	,   COL_BG ) ;
         if (	painted_browser_open	)
- fill_rect   ( browser_x -	10	,   browser_y   -  10	,	browser_w   +  26   ,  browser_h   +  26	,   COL_BG ) ;
+ fill_rect   ( painted_browser_x -	10	,   painted_browser_y   -  10	,	browser_w   +  26   ,  browser_h   +  26	,   COL_BG ) ;
         }
 		draw_desktop_icons	(   )	;
  if ( win_open  ) {
@@ -905,11 +909,15 @@ if (	painted_file_open   )
         draw_taskbar  (   ) ;
 		if   ( menu_open	) draw_menu	(  )  ;
    painted_win_x  = win_x  ;
-	painted_win_y =   win_y  ;
-painted_paint_open   = paint_open	;
- painted_terminal_open   =   terminal_open	;
+ 	painted_win_y =   win_y  ;
+ painted_paint_open   = paint_open	;
+  painted_terminal_open   =   terminal_open	;
  painted_file_open =	file_open  ;
  painted_browser_open = browser_open;
+ painted_paint_x = paint_x; painted_paint_y = paint_y;
+ painted_terminal_x = terminal_x; painted_terminal_y = terminal_y;
+ painted_file_x = file_x; painted_file_y = file_y;
+ painted_browser_x = browser_x; painted_browser_y = browser_y;
  	/* Present: one bulk rep movsl for the whole frame instead of
  	   ~2.3M byte writes through emulated MMIO. */
  	{
