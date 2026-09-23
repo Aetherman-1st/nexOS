@@ -627,13 +627,13 @@ draw_pixel	(   mx + c   ,  my	+ r   ,   COL_WHITE	) ;
  }
 
 /* ── UI drawing ── */
-  static   void  draw_taskbar	( void  ) {
-fill_rect	(	0 ,	scr_h  -  tb_h  ,   scr_w   ,	tb_h , COL_TASKBAR )  ;
-  fill_rect (  0  ,	scr_h  -   tb_h   ,   scr_w ,   2	, COL_ACCENT  )	;
-     fill_rect  (  8	,	scr_h  - tb_h	+	8  ,   70	,	tb_h -  16   ,	COL_ACCENT	) ;
-		draw_str   (   18  ,  scr_h  - tb_h  +  18 , "START"  , COL_BLACK )  ;
-		fill_rect  (   86   ,	scr_h -	tb_h	+   8   ,   74  , tb_h	-   16  ,   paint_open  ?   COL_ACCENT	: COL_BTN	)   ;
-     draw_str  (  97 ,	scr_h  - tb_h	+ 18  ,	"PAINT"	,  paint_open ?	COL_BLACK   :  COL_WHITE   )	;
+   static   void  draw_taskbar	( void  ) {
+ fill_rect	(	0 ,	scr_h  -  tb_h  ,   scr_w   ,	tb_h , COL_TASKBAR )  ;
+   fill_rect (  0  ,	scr_h  -   tb_h   ,   scr_w ,   2	, COL_ACCENT  )	;
+      fill_rounded  (  8	,	scr_h - tb_h	+	8  ,   70	,	tb_h -  16   ,	6	,	COL_ACCENT	) ;
+ 		draw_str   (   18  ,  scr_h  - tb_h  +  18 , "START"  , COL_BLACK )  ;
+ 		fill_rounded  (   86   ,	scr_h -	tb_h	+   8   ,   74  , tb_h	-   16   ,	6	,   paint_open  ?   COL_ACCENT	: COL_BTN	)   ;
+      draw_str  (  97 ,	scr_h  - tb_h	+ 18  ,	"PAINT"	,  paint_open ?	COL_BLACK   :  COL_WHITE   )	;
 draw_str   (	scr_w	-	100	, scr_h -   tb_h +  18  ,   "nexOS"   ,  COL_MUTED  )  ;
 	char tickbuf[32];
 	snprintf(tickbuf, sizeof(tickbuf), "T %d S %d", (int)pit_ticks, (int)switches);
@@ -641,26 +641,26 @@ draw_str   (	scr_w	-	100	, scr_h -   tb_h +  18  ,   "nexOS"   ,  COL_MUTED  )  
     }
 
    static   void	draw_desktop_icons	(  void	) {
-	fill_rect  ( 22   , 286  ,	36	, 25	,  COL_ACCENT )	;
-fill_rect   (	27  ,   281	,	16	,  7	,   COL_ACCENT )	;
-    draw_str   (	9   ,  316 ,   "FILES"	, COL_WHITE	)	;
-       /* Terminal icon */
- fill_rect (   22  , 205 , 34	,  25 ,	COL_BTN	)	;
-	fill_rect   (	26  ,  209  ,  26	, 17   , 0x00000000	) ;
-draw_str	(   30 , 214  ,  ">_"	,   COL_ACCENT   )	;
-draw_str   (   13  , 234  ,  "TERMINAL" , COL_WHITE  )  ;
- /* Paint icon */
- fill_rect   (   22  ,   42   ,	34 , 28	,  COL_WHITE  )   ;
-       fill_rect  (	28   ,   48  ,  22	, 16  , COL_ACCENT  ) ;
-  draw_str  (   16	,	76	,  "PAINT"   ,   COL_WHITE	) ;
-  /* Recycle Bin icon */
-		fill_rect (   26  , 120  ,   26  , 28	,	COL_BTN   )	;
-	fill_rect	(  23	,   116	, 32  , 5	,  COL_WHITE )   ;
-        fill_rect   (   32	, 126	,   4   ,  17	,	COL_MUTED  )	;
-   fill_rect (	42	,  126 ,  4	,   17   , COL_MUTED	) ;
- draw_str   ( 10	,	154 ,	"RECYCLE"   ,  COL_WHITE	)   ;
-     draw_str   (	18   ,   164 , "BIN" ,	COL_WHITE )   ;
-}
+ 	fill_rounded  ( 22   , 286  ,	36	, 25	,  5	,  COL_ACCENT )	;
+ fill_rounded   (	27  ,   281	,	16	,  7	,  3	,   COL_ACCENT )	;
+     draw_str   (	9   ,  316 ,   "FILES"	, COL_WHITE	)	;
+        /* Terminal icon */
+  fill_rounded (   22  , 205 , 34	,  25 ,	5	,	COL_BTN	)	;
+ 	fill_rect   (	26  ,  209  ,  26	, 17   , 0x00000000	) ;
+ draw_str	(   30 , 214  ,  ">_"	,   COL_ACCENT   )	;
+ draw_str   (   13  , 234  ,  "TERMINAL" , COL_WHITE  )  ;
+  /* Paint icon */
+  fill_rounded   (   22  ,   42   ,	34 , 28	,  5	,  COL_WHITE  )   ;
+        fill_rounded  (	28   ,   48  ,  22	, 16  ,  4	, COL_ACCENT  ) ;
+   draw_str  (   16	,	76	,  "PAINT"   ,   COL_WHITE	) ;
+   /* Recycle Bin icon */
+ 		fill_rounded (   26  , 120  ,   26  , 28	,  5	,	COL_BTN   )	;
+ 	fill_rect	(  23	,   116	, 32  , 5	,  COL_WHITE )   ;
+         fill_rect   (   32	, 126	,   4   ,  17	,	COL_MUTED  )	;
+    fill_rect (	42	,  126 ,  4	,   17   , COL_MUTED	) ;
+  draw_str   ( 10	,	154 ,	"RECYCLE"   ,  COL_WHITE	)   ;
+      draw_str   (	18   ,   164 , "BIN" ,	COL_WHITE )   ;
+ }
 
 static char fm_names[8][13];
 static u32 fm_sizes[8];
