@@ -381,9 +381,15 @@ static	u32  paint_color =   0x0089B4FA ;
       static	int	painted_paint_open	=	0  ;
 	static  int  painted_terminal_open =	0 ;
 		static   int	painted_file_open  = 0  ;
- static volatile	int	mouse_x  =   400	,   mouse_y	= 300 ;
-    static  volatile   int	mouse_updated   =	0  ;
-		static   volatile   u8  mouse_buttons   =	0   ;
+  static volatile	int	mouse_x  =   400	,   mouse_y	= 300 ;
+     static  volatile   int	mouse_updated   =	0  ;
+ 		static   volatile   u8  mouse_buttons   =	0   ;
+ 	/* Press-edge queue: a quick press+release inside one render would
+ 	   otherwise collapse to "nothing happened". Handler records the
+ 	   edge + position; the main loop drains one per iteration. */
+ 	static	volatile	int	click_head	=	0	,	click_tail	=	0	;
+ 	static	volatile	int	click_qx	[	4	]	,	click_qy	[	4	]	;
+ 	static	volatile	u8	prev_mbtn	=	0	;
 
  /* ── Mouse cursor save/restore (bitmap is 12 rows x 8 cols) ── */
 #define CUR_W 8
@@ -786,7 +792,14 @@ int	xd   = mp [	1 ]  ,   yd   =   mp   [	2	]  ;
        mouse_buttons =  mp	[   0  ]  &   7   ;	mouse_x  +=	xd * 2	;	mouse_y	-=  yd * 2 ;
         if ( mouse_x  <  0   )  mouse_x =   0	;  if (	mouse_x	> scr_w   -  1	)	mouse_x   =	scr_w	-	1   ;
  if  (   mouse_y  <   0   )   mouse_y =	0   ;  if	(   mouse_y  >	scr_h  - 1	) mouse_y =	scr_h	- 1	;
-	mouse_updated  =  1   ;
+ 	if ( (mouse_buttons & 1) && !(prev_mbtn & 1) ) {
+ 	if ( ((click_head + 1) & 3) != (click_tail & 3) ) {
+ 	click_qx[click_head & 3] = mouse_x; click_qy[click_head & 3] = mouse_y;
+ 	click_head++;
+ 	}
+ 	}
+ 	prev_mbtn = mouse_buttons;
+ 	mouse_updated  =  1   ;
 } }	}  }  }
         outb	( 0xA0  ,   0x20 )	;   outb	(	0x20	, 0x20 )   ;
 	}
@@ -933,6 +946,13 @@ int  redraw  =   0  ;
 	mouse_updated  =	0   ;
 	int mx   =	mouse_x	,   my	=  mouse_y   ;
    int	lbtn   =	mouse_buttons   &  1	;
+ 	/* Drain one queued press edge as a synthetic press so fast
+ 	   clicks survive long renders. */
+ 	if ( click_tail != click_head ) {
+ 	mx = click_qx[click_tail & 3]; my = click_qy[click_tail & 3];
+ 	click_tail++;
+ 	lbtn = 1; prev_lbtn = 0;
+ 	}
 
       if (	lbtn && !   prev_lbtn	)	{
      if	( mx	>=	6  && mx	<   76   &&  my  >=  scr_h - tb_h   +	4	&&  my < scr_h  -	4   )   {
