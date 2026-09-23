@@ -1328,9 +1328,14 @@ else   if	(  term_is	(  "YAZEED"  )	) term_message  = 4  ;
 	    if (name[0] == 0) term_add_line("USAGE: CAT FILE");
 	    else if (g_fs.bs.bpb_sectors_per_cluster == 0) term_add_line("NO DISK IMAGE");
 	    else {
-	        int n = fat32_read_file(&g_fs, name, file_buf, sizeof(file_buf) - 1);
-	        if (n <= 0) term_add_line("NOT FOUND");
-	        else { file_buf[n] = 0; term_show_file(file_buf, n); }
+	        int fd = vfs_open(name);
+	        if (fd < 0) term_add_line("NOT FOUND");
+	        else {
+	            int n = vfs_read(fd, file_buf, sizeof(file_buf) - 1);
+	            vfs_close(fd);
+	            if (n <= 0) term_add_line("NOT FOUND");
+	            else { file_buf[n] = 0; term_show_file(file_buf, n); }
+	        }
 	    }
 	}
 	else if ( term_is ( "PING" ) ) {
