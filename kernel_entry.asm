@@ -4,11 +4,14 @@ global _isr44
 global _isr33
 global _isr32
 global _isr43
+global _isr128
 extern _main
 extern _mouse_handler
 extern _keyboard_handler
 extern _timer_handler
+extern _sched_tick
 extern _net_handler
+extern _syscall_handler
 extern _exception_handler
 
 _start:
@@ -29,13 +32,24 @@ _isr33:
 
 _isr32:
     pusha
-    call _timer_handler
+    push esp
+    call _sched_tick
+    add esp, 4
+    mov esp, eax
     popa
     iretd
 
 _isr43:
     pusha
     call _net_handler
+    popa
+    iretd
+
+_isr128:
+    pusha
+    push esp
+    call _syscall_handler
+    add esp, 4
     popa
     iretd
 
