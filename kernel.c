@@ -1052,20 +1052,29 @@ else   if	(  term_is	(  "YAZEED"  )	) term_message  = 4  ;
 	}
 	else if ( term_is ( "PING" ) ) {
 	    term_message = 0;
+	    u8 mac[6];
 	    net_arp_request(net_get_gw());
-	    term_add_line("ARP SENT TO GW");
+	    if (net_arp_lookup(net_get_gw(), mac) == 0) {
+	        char line[56];
+	        snprintf(line, sizeof(line), "GW MAC %x:%x:%x:%x:%x:%x",
+	            mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+	        term_add_line(line);
+	    } else term_add_line("ARP SENT TO GW");
 	}
 	else if ( term_starts ( "FETCH" ) ) {
 	    term_message = 0;
 	    u32 sz = sizeof(http_buf);
 	    int r = net_http_get(0x5DB8D822, "/", http_buf, &sz);
-	    if (r == 0 && sz > 0) {
-	        int n = (sz < (u32)(sizeof(browser_buf) - 1)) ? (int)sz : (int)sizeof(browser_buf) - 1;
-	        for (int i = 0; i < n; i++) browser_buf[i] = (char)http_buf[i];
-	        browser_buf[n] = 0; browser_len = n;
-	        term_add_line("FETCH OK, SEE BROWSER");
-	        browser_open = 1;
-	    } else term_add_line("FETCH FAILED (NO NIC?)");
+	    if (r == -1) term_add_line("NO ARP REPLY");
+	    else if (r == -2) term_add_line("ARP OK, TCP IN PHASE D");
+	    else term_add_line("FETCH FAILED");
+	}
+	else if ( term_is ( "CRASH" ) ) {
+	    term_message = 0;
+	    term_add_line("TRIGGERING #UD...");
+	    text_updated = 1;
+	    render_desktop();
+	    asm volatile("ud2");
 	}
 	else if ( term_is ( "BROWSER" ) ) {
 	    term_message = 0;
