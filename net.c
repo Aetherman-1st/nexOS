@@ -1,4 +1,5 @@
 #include "net.h"
+#include "pci.h"
 
 static u16 rtl_base = 0;
 static u8 rtl_irq = 11;
@@ -21,50 +22,33 @@ struct arp_ent { u32 ip; u8 mac[6]; int valid; };
 static struct arp_ent arp_tab[8];
 
 u32 net_get_gw(void) { return gw_ip; }
-
-static void outl_p(u16 port, u32 v) {
-    __asm__ volatile("outl %0, %1" : : "a"(v), "Nd"(port));
-}
-
-static u32 inl_p(u16 port) {
-    u32 v;
-    __asm__ volatile("inl %1, %0" : "=a"(v) : "Nd"(port));
-    return v;
-}
+u8 net_get_irq(void) { return rtl_irq; }
 
 static u32 pci_cfg_addr(u8 bus, u8 dev, u8 fn, u8 off) {
     return 0x80000000u | ((u32)bus << 16) | ((u32)dev << 11) | ((u32)fn << 8) | (off & 0xFC);
 }
 
 static u32 pci_read(u8 bus, u8 dev, u8 fn, u8 off) {
-    outl_p(0xCF8, pci_cfg_addr(bus, dev, fn, off));
-    return inl_p(0xCFC);
+    outl(0xCF8, pci_cfg_addr(bus, dev, fn, off));
+    return inl(0xCFC);
 }
 
 static void pci_write(u8 bus, u8 dev, u8 fn, u8 off, u32 v) {
-    outl_p(0xCF8, pci_cfg_addr(bus, dev, fn, off));
-    outl_p(0xCFC, v);
+    outl(0xCF8, pci_cfg_addr(bus, dev, fn, off));
+    outl(0xCFC, v);
 }
 
 static int rtl_pci_probe(void) {
-    for (u8 dev = 0; dev < 32; dev++) {
-        u32 id = pci_read(0, dev, 0, 0x00);
-        if (id == 0xFFFFFFFFu) continue;
-        if ((id & 0xFFFF) == 0x10EC && (id >> 16) == 0x8139) {
-            u32 bar0 = pci_read(0, dev, 0, 0x10);
-            u32 cmd = pci_read(0, dev, 0, 0x04);
-            pci_write(0, dev, 0, 0x04, cmd | 0x05);
-            u8 irq = (u8)(pci_read(0, dev, 0, 0x3C) & 0xFF);
-            if (bar0 & 1) rtl_base = (u16)(bar0 & 0xFFFC);
-            else rtl_base = 0x300;
-            if (irq != 0 && irq < 16) rtl_irq = irq;
-            return 0;
-        }
+    pci_dev_t d;
+    if (pci_find(0x10EC, 0x8139, &d) != 0) {
+        rtl_base = 0x300;
+        return -1;
     }
-    rtl_base = 0x300;
-    return -1;
+    u32 io = pci_bar_io(&d, 0);
+    rtl_base = io ? (u16)io : 0x300;
+    if (d.irq != 0 && d.irq < 16) rtl_irq = d.irq;
+    return 0;
 }
-
 
 void net_init(void) {
     rtl_pci_probe();
@@ -78,11 +62,11 @@ void net_init(void) {
     }
 
     for (u32 i = 0; i < sizeof(rx_ring); i++) rx_ring[i] = 0;
-    outl_p(rtl_base + 0x30, (u32)rx_ring);
+    outl(rtl_base + 0x30, (u32)rx_ring);
     rx_offset = 0;
 
     outw(rtl_base + 0x3C, 0x0005);
-    outl_p(rtl_base + 0x44, 0x00000F87);
+    outl(rtl_base + 0x44, 0x00000F87);
     outb(rtl_base + 0x37, 0x0C);
     for (int i = 0; i < 8; i++) { arp_tab[i].valid = 0; arp_tab[i].ip = 0; }
 }
@@ -91,8 +75,8 @@ static void rtl_tx_raw(const u8 *frame, u32 len) {
     if (len < 60) len = 60;
     if (len > 1536) len = 1536;
     for (u32 i = 0; i < len; i++) tx_bufs[tx_cur][i] = frame[i];
-    outl_p(rtl_base + 0x20 + tx_cur * 4, (u32)tx_bufs[tx_cur]);
-    outl_p(rtl_base + 0x10 + tx_cur * 4, len);
+    outl(rtl_base + 0x20 + tx_cur * 4, (u32)tx_bufs[tx_cur]);
+    outl(rtl_base + 0x10 + tx_cur * 4, len);
     tx_cur = (tx_cur + 1) & 3;
 }
 

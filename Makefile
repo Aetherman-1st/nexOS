@@ -21,14 +21,23 @@ ata.o: ata.c ata.h io.h
 fat32.o: fat32.c fat32.h ata.h io.h
 	$(CC) $(CFLAGS) -c fat32.c -o $@
 
-net.o: net.c net.h io.h ata.h
+pci.o: pci.c pci.h io.h
+	$(CC) $(CFLAGS) -c pci.c -o $@
+
+acpi.o: acpi.c acpi.h io.h
+	$(CC) $(CFLAGS) -c acpi.c -o $@
+
+usb.o: usb.c usb.h io.h pci.h
+	$(CC) $(CFLAGS) -c usb.c -o $@
+
+net.o: net.c net.h io.h ata.h pci.h
 	$(CC) $(CFLAGS) -c net.c -o $@
 
-kernel.o: kernel.c io.h ata.h fat32.h net.h
+kernel.o: kernel.c io.h ata.h fat32.h net.h pci.h acpi.h usb.h
 	$(CC) $(CFLAGS) -c kernel.c -o $@
 
-kernel.tmp: kernel_entry.o ata.o fat32.o net.o kernel.o link.ld
-	$(LD) $(LDFLAGS) -o $@ kernel_entry.o ata.o fat32.o net.o kernel.o
+kernel.tmp: kernel_entry.o ata.o fat32.o pci.o acpi.o usb.o net.o kernel.o link.ld
+	$(LD) $(LDFLAGS) -o $@ kernel_entry.o ata.o fat32.o pci.o acpi.o usb.o net.o kernel.o
 	@test "$$(nm $@ | awk '/ _start$$/{print $$1}')" = "00008000" || (echo "FATAL: _start not at 0x8000"; exit 1)
 
 kernel.bin: kernel.tmp

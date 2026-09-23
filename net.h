@@ -37,6 +37,7 @@ struct tcp_sock {
 
 void net_init(void);
 u32 net_get_gw(void);
+u8 net_get_irq(void);
 void net_arp_request(u32 gw);
 int net_arp_lookup(u32 ip, u8 *mac_out);
 int net_http_get(u32 ip, const char *path, u8 *buf, u32 *sz);
