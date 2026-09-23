@@ -779,10 +779,12 @@ u8	st   =   inb	(   0x64 )   ;
 else   {   mp [   mc ++   ]   =  d	;   if ( mc   ==   3  )	{   mc = 0 ;
 		if   ( !	(  (   mp   [   0 ]  &	0x40 )   ||  (	mp	[	0	] &  0x80 )  )	)	{
 int	xd   = mp [	1 ]  ,   yd   =   mp   [	2	]  ;
-  if  (  mp	[	0 ]   &	0x10	)   xd	-=   256	;	if (   mp   [  0 ] &  0x20	)  yd  -=   256	;
-       mouse_buttons =  mp	[   0  ]  &   7   ;	mouse_x  +=	xd	;	mouse_y	-=  yd ;
-        if ( mouse_x  <  0   )  mouse_x =   0	;  if (	mouse_x	> scr_w   -  9	)	mouse_x   =	scr_w	-	9   ;
- if  (   mouse_y  <   0   )   mouse_y =	0   ;  if	(   mouse_y  >	scr_h  - 13	) mouse_y =	scr_h	- 13	;
+   if  (  mp	[	0 ]   &	0x10	)   xd	-=   256	;	if (   mp   [  0 ] &  0x20	)  yd  -=   256	;
+       /* 2x gain: full 1024x768 reachable with half the hand travel,
+          so the host pointer never runs out of window first. */
+       mouse_buttons =  mp	[   0  ]  &   7   ;	mouse_x  +=	xd * 2	;	mouse_y	-=  yd * 2 ;
+        if ( mouse_x  <  0   )  mouse_x =   0	;  if (	mouse_x	> scr_w   -  1	)	mouse_x   =	scr_w	-	1   ;
+ if  (   mouse_y  <   0   )   mouse_y =	0   ;  if	(   mouse_y  >	scr_h  - 1	) mouse_y =	scr_h	- 1	;
 	mouse_updated  =  1   ;
 } }	}  }  }
         outb	( 0xA0  ,   0x20 )	;   outb	(	0x20	, 0x20 )   ;
