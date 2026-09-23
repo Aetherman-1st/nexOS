@@ -1580,6 +1580,9 @@ else  if (  c   >= ' '   &&  c   <=   '~' )	{ if  (	text_len   <  511   )   text
 		win_x = (   scr_w	-   win_w )   / 2	;
         win_y   = (   scr_h	-  win_h -  50   )	/	2  ;
 remap_pic   (	)  ;  init_idt	(	)   ;	init_ps2   (	)  ;  ;		pit_init	(  )  ;
+	pic_unmask_irq(12);
+	pic_unmask_irq(net_get_irq());
+	if (net_get_irq() != 11) set_gate(32 + net_get_irq(), (u32)isr43, 0x08, 0x8E);
 		for (int ti = 0; ti < MAX_TASKS; ti++) tasks[ti].state = TS_EMPTY;
 		tasks[0].state = TS_RUNNING; tasks[0].id = 0;
 		tasks[0].name[0] = 'k'; tasks[0].name[1] = 'e'; tasks[0].name[2] = 'r';
