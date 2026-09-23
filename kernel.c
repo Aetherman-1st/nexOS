@@ -12,6 +12,7 @@ typedef  unsigned	char  u8 ;
 #include <stdarg.h>
 #include "ata.h"
 #include "fat32.h"
+#include "net.h"
 
 extern fat32_fs_t g_fs;
 extern u8 g_disk_buf[];
@@ -354,6 +355,9 @@ draw_pixel  (   x   ,   y  + i ,  light	)  ;
 
 static int	win_x   ,  win_y  ,  win_w =	500   , win_h =   350  ;
 static int	win_open	=	1	;
+static int browser_open = 0;
+static int painted_browser_open = 0;
+static int browser_x = 100, browser_y = 80, browser_w = 400, browser_h = 300;
 static	int   drag_target_x   ,	drag_target_y	;
         static int  dragging  =	0	, drag_off_x   , drag_off_y   ;
         static   int	tb_h   = 40 ;
@@ -558,14 +562,15 @@ draw_str   (  paint_x  +  10   , paint_y +  paint_h	- 9 ,   "DRAW WITH LEFT MOUS
   }
 
 	static  void draw_menu ( void	)	{
-     int	mx  =	6   ,	my   = scr_h	-  tb_h  - 152 ;
-draw_3d_border   (   mx   , my ,   152 ,  152  ,  COL_WINBG  ,  COL_WHITE  , COL_MUTED   ) ;
-      draw_str   (  mx	+	8   ,   my	+  10	,  "TERMINAL" ,	COL_BLACK	) ;
-     draw_str  (	mx   +   8	,  my  +   24  ,  "NOTEPAD"  ,	COL_BLACK )   ;
-draw_str ( mx  +	8	, my   + 38	,   "ABOUT"   ,   COL_BLACK  ) ;
-		fill_rect	(  mx + 6	, my +	76   ,  140  ,  26  ,   COL_RED  )   ;
-		draw_str	(	mx	+  18  ,   my +  85 ,	"SHUTDOWN"   ,	COL_WHITE	)  ;
-  }
+      int	mx  =	6   ,	my   = scr_h	-  tb_h  - 152 ;
+ draw_3d_border   (   mx   , my ,   152 ,  152  ,  COL_WINBG  ,  COL_WHITE  , COL_MUTED   ) ;
+       draw_str   (  mx	+	8   ,   my	+  10	,  "TERMINAL" ,	COL_BLACK	) ;
+      draw_str  (	mx   +   8	,  my  +   24  ,  "NOTEPAD"  ,	COL_BLACK )   ;
+ draw_str ( mx  +	8	, my   + 38	,   "ABOUT"   ,   COL_BLACK  ) ;
+ draw_str ( mx + 8, my + 52, "BROWSER", COL_BLACK ) ;
+ 		fill_rect	(  mx + 6	, my +	76   ,  140  ,  26  ,   COL_RED  )   ;
+ 		draw_str	(	mx	+  18  ,   my +  85 ,	"SHUTDOWN"   ,	COL_WHITE	)  ;
+   }
 
 static  void  boot_splash (  void )   {
 	clear_screen	(   COL_SCRN  )	;
@@ -581,8 +586,18 @@ draw_str (   title_x ,   scr_h	/   2  -  18  ,   "WELCOME TO nexOS"   , COL_WHIT
 }
 }
 
+static void draw_browser_window(void) {
+    fill_rect(browser_x, browser_y, browser_w, browser_h, COL_WINBG);
+    fill_rect(browser_x, browser_y, browser_w, 24, COL_TITLE);
+    draw_str(browser_x + 8, browser_y + 6, "nexOS Browser", COL_TEXT);
+    fill_rect(browser_x + browser_w - 32, browser_y + 3, 26, 18, COL_RED);
+    draw_str(browser_x + browser_w - 29, browser_y + 4, "X", COL_TEXT);
+    fill_rect(browser_x + 4, browser_y + 28, browser_w - 8, 2, COL_ACCENT);
+    fill_rect(browser_x + 4, browser_y + 32, browser_w - 8, browser_h - 40, COL_SCRN);
+    draw_str(browser_x + 8, browser_y + 36, "http://", COL_ACCENT);
+}
 
-    static void  render_desktop	( void )   {
+     static void  render_desktop	( void )   {
 	/* Do not clear the whole framebuffer while dragging.  That made QEMU
        show the intermediate blank frame as visible flashing. */
  /* Render against the previous complete frame, then present it once. */
@@ -600,23 +615,27 @@ fill_rect	(	paint_x  -	4  ,  paint_y -	4	,   paint_w  +   8  , paint_h   +  8   
    fill_rect	(   terminal_x -	4   ,   terminal_y   -	4 ,
 	terminal_w   +	8	,  terminal_h   +	8  ,	COL_BG )   ;
 if (	painted_file_open   )
-     fill_rect   ( file_x	-	4	,   file_y   -  4	,	file_w   +  8   ,  file_h   +  8	,   COL_BG ) ;
-       }
+      fill_rect   ( file_x	-	4	,   file_y   -  4	,	file_w   +  8   ,  file_h   +  8	,   COL_BG ) ;
+        if (	painted_browser_open	)
+ fill_rect   ( browser_x -	4	,   browser_y   -  4	,	browser_w   +  8   ,  browser_h   +  8	,   COL_BG ) ;
+        }
 		draw_desktop_icons	(   )	;
-if ( win_open  ) {
+ if ( win_open  ) {
  draw_window  ( )   ;
-       draw_text	(	)   ;
-  }
-        if	(	paint_open   ) draw_paint  (  ) ;
+        draw_text	(	)   ;
+   }
+         if	(	paint_open   ) draw_paint  (  ) ;
 		if	(	terminal_open	)  draw_terminal	(   ) ;
-        if	(	file_open	)	draw_file_manager	(	)	;
-       draw_taskbar  (   ) ;
+         if	(	file_open	)	draw_file_manager	(	)	;
+         if	(	browser_open	)	draw_browser_window	(	)	;
+        draw_taskbar  (   ) ;
 		if   ( menu_open	) draw_menu	(  )  ;
    painted_win_x  = win_x  ;
 	painted_win_y =   win_y  ;
-   painted_paint_open   = paint_open	;
-  painted_terminal_open   =   terminal_open	;
-painted_file_open =	file_open  ;
+painted_paint_open   = paint_open	;
+ painted_terminal_open   =   terminal_open	;
+ painted_file_open =	file_open  ;
+ painted_browser_open = browser_open;
 	cur_ox  =   -  1	;
         cur_save   (   mouse_x  ,	mouse_y  )	;
        cur_draw (	mouse_x	,	mouse_y	) ;
@@ -745,6 +764,7 @@ else  if (  c   >= ' '   &&  c   <=   '~' )	{ if  (	text_len   <  511   )   text
 	ata_init   ( ) ;
     fat32_init (&g_fs, g_disk_buf, 32);
     g_disk_init = 1;
+    net_init   ( ) ;
     vbe_init  ( ) ;
 		init_font   (  )  ;
 	boot_splash  (  ) ;
@@ -818,11 +838,15 @@ mx <	terminal_x  +  terminal_w	-  10  &&
        file_open  = 0	;	redraw   =   1	;
   }  else  if	( menu_open   &&  mx	>=	6	&&   mx  <	158 &&
   my   >=  scr_h   - tb_h  -  152   &&	my	< scr_h   - tb_h ) {
-int menu_y = scr_h   -   tb_h  - 152	;
-      if (	my  >=   menu_y  + 76 && my	<   menu_y  +	102   )   {
-		shutdown_system ( )   ;
-        }
-        menu_open	=	0	;  redraw =  1 ;
+ int menu_y = scr_h   -   tb_h  - 152	;
+       if (	my  >=   menu_y + 76 && my	<   menu_y  +	102   )   {
+ 		shutdown_system ( )   ;
+         }
+         if (	my  >=   menu_y + 52 && my	<   menu_y  +	76   )   {
+ 		browser_open = !browser_open;
+ 		if (browser_open) draw_browser_window();
+         }
+         menu_open	=	0	;  redraw =  1 ;
 	}  else   if	( win_open  &&  mx  >=	win_x   &&   mx	<	win_x	+   win_w	&&
    my	>= win_y  &&	my	<  win_y +  30	)  {
       if   ( mx  >=	win_x +	win_w   -  22  &&  mx   <   win_x   +  win_w  -   4  &&

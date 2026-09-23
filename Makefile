@@ -21,11 +21,14 @@ ata.o: ata.c ata.h io.h
 fat32.o: fat32.c fat32.h ata.h io.h
 	$(CC) $(CFLAGS) -c fat32.c -o $@
 
-kernel.o: kernel.c io.h ata.h fat32.h
+net.o: net.c net.h io.h ata.h
+	$(CC) $(CFLAGS) -c net.c -o $@
+
+kernel.o: kernel.c io.h ata.h fat32.h net.h
 	$(CC) $(CFLAGS) -c kernel.c -o $@
 
-kernel.tmp: kernel_entry.o ata.o fat32.o kernel.o link.ld
-	$(LD) $(LDFLAGS) -o $@ kernel_entry.o ata.o fat32.o kernel.o
+kernel.tmp: kernel_entry.o ata.o fat32.o net.o kernel.o link.ld
+	$(LD) $(LDFLAGS) -o $@ kernel_entry.o ata.o fat32.o net.o kernel.o
 
 kernel.bin: kernel.tmp
 	$(OBJCOPY) -O binary kernel.tmp $@
