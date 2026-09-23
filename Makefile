@@ -47,7 +47,7 @@ WALL_LBA := 256
 WALL_SECTORS := 4608
 
 wall.bin: wallpaper.jpg
-	python3 -c "from PIL import Image; im = Image.open('wallpaper.jpg').convert('RGB'); tw, th = 1024, 768; s = max(tw / im.width, th / im.height); nw, nh = int(im.width * s + 0.5), int(im.height * s + 0.5); im = im.resize((nw, nh), Image.LANCZOS); x = (nw - tw) // 2; im = im.crop((x, 0, x + tw, th)); px = im.tobytes(); open('wall.bin','wb').write(b'NEXOSWP01' + tw.to_bytes(4,'little') + th.to_bytes(4,'little') + px)"
+	python3 -c "from PIL import Image; im = Image.open('wallpaper.jpg').convert('RGB'); tw, th = 1024, 768; s = max(tw / im.width, th / im.height); nw, nh = int(im.width * s + 0.5), int(im.height * s + 0.5); im = im.resize((nw, nh), Image.LANCZOS); x = (nw - tw) // 2; im = im.crop((x, 0, x + tw, th)); px = im.tobytes(); open('wall.bin','wb').write(b'NEXOSW01' + tw.to_bytes(4,'little') + th.to_bytes(4,'little') + px)"
 
 nexos.img: boot.bin kernel.bin wall.bin
 	dd if=/dev/zero of=$@ bs=512 count=4864 2>/dev/null
