@@ -510,7 +510,10 @@ fill_rect	(	0 ,	scr_h  -  tb_h  ,   scr_w   ,	tb_h , COL_TASKBAR )  ;
 		draw_str   (   18  ,  scr_h  - tb_h  +  18 , "START"  , COL_BLACK )  ;
 		fill_rect  (   86   ,	scr_h -	tb_h	+   8   ,   74  , tb_h	-   16  ,   paint_open  ?   COL_ACCENT	: COL_BTN	)   ;
      draw_str  (  97 ,	scr_h  - tb_h	+ 18  ,	"PAINT"	,  paint_open ?	COL_BLACK   :  COL_WHITE   )	;
-draw_str   (	scr_w	-	100	, scr_h -   tb_h +  18  ,   "nexOS"   ,  COL_MUTED  )	;
+draw_str   (	scr_w	-	100	, scr_h -   tb_h +  18  ,   "nexOS"   ,  COL_MUTED  )  ;
+	char tickbuf[32];
+	snprintf(tickbuf, sizeof(tickbuf), "T %d S %d", (int)pit_ticks, (int)switches);
+	draw_str   (	scr_w	-	220	, scr_h -   tb_h +  18  ,   tickbuf   ,  COL_MUTED  )  ;
     }
 
    static   void	draw_desktop_icons	(  void	) {
@@ -857,7 +860,7 @@ outb   (	0x20  ,	0x11   ) ;  outb	(  0xA0   , 0x11  )  ;
 	for (;;) asm volatile("hlt");
 	}
 
-		static	volatile	u32	pit_ticks	=	0	;
+ 		static	volatile	u32	pit_ticks	=	0	;
 
 	void	timer_handler	(	void	)	{
 		pit_ticks++;
@@ -869,6 +872,225 @@ outb   (	0x20  ,	0x11   ) ;  outb	(  0xA0   , 0x11  )  ;
 		outb	(	0x43	,	0x36	)	;
 		outb	(	0x40	,	div & 0xFF	)	;
 		outb	(	0x40	,	(div >> 8) & 0xFF	)	;
+	}
+
+#define MAX_TASKS 8
+#define TS_EMPTY 0
+#define TS_READY 1
+#define TS_RUNNING 2
+#define TS_SLEEPING 3
+
+	typedef struct {
+	u32 esp;
+	int state;
+	int id;
+	u32 wake;
+	void (*fn)(void);
+	char name[16];
+	} task_t;
+
+	static task_t tasks[MAX_TASKS];
+	static int cur_task = 0;
+	static u32 switches = 0;
+	static int sched_on = 0;
+
+	static void task_begin(void) {
+		void (*f)(void) = tasks[cur_task].fn;
+	if (f) f();
+	tasks[cur_task].state = TS_EMPTY;
+	for (;;) asm volatile("hlt");
+	}
+
+	static int task_create(void (*fn)(void), const char *name) {
+	for (int i = 0; i < MAX_TASKS; i++) {
+	    if (tasks[i].state != TS_EMPTY) continue;
+	    u8 *stack = (u8 *)kmalloc(8192);
+	    if (!stack) return -1;
+	    u32 *sp = (u32 *)(stack + 8192);
+	    *--sp = 0x202;
+	    *--sp = 0x08;
+	    *--sp = (u32)task_begin;
+	    for (int r = 0; r < 8; r++) *--sp = 0;
+	    tasks[i].esp = (u32)sp;
+	    tasks[i].state = TS_READY;
+	    tasks[i].id = i;
+	    tasks[i].wake = 0;
+	    tasks[i].fn = fn;
+	    int k = 0;
+	    while (name[k] && k < 15) { tasks[i].name[k] = name[k]; k++; }
+	    tasks[i].name[k] = 0;
+	    return i;
+	}
+	return -1;
+	}
+
+	static u32 sched_pick(u32 savesp) {
+		tasks[cur_task].esp = savesp;
+	int next = cur_task;
+	for (int i = 1; i <= MAX_TASKS; i++) {
+	    int c = (cur_task + i) % MAX_TASKS;
+	    if (tasks[c].state == TS_SLEEPING && pit_ticks >= tasks[c].wake)
+	        tasks[c].state = TS_READY;
+	    if (tasks[c].state == TS_READY || (tasks[c].state == TS_RUNNING && c != cur_task)) {
+	        next = c;
+	        break;
+	    }
+	}
+	if (next != cur_task) {
+	    tasks[cur_task].state = TS_READY;
+	    tasks[next].state = TS_RUNNING;
+	    cur_task = next;
+	    switches++;
+	}	return tasks[cur_task].esp;
+	}
+
+	u32	sched_tick	(	u32 savesp	)	{
+		pit_ticks++;
+		outb	(	0x20	,	0x20	)	;
+		if (!sched_on) return savesp;
+		return sched_pick(savesp);
+	}
+
+	static void task_sleep(u32 ticks) {
+	tasks[cur_task].state = TS_SLEEPING;
+	tasks[cur_task].wake = pit_ticks + ticks;
+	asm volatile("int $32");
+	}
+
+	static void idle_task(void) {
+	for (;;) asm volatile("hlt");
+	}
+
+#define SYS_YIELD 0
+#define SYS_GETTICKS 1
+#define SYS_LOG 2
+#define SYS_EXIT 3
+
+	typedef struct { u32 eax, ecx, edx, ebx, esp, ebp, esi, edi; } regs_t;
+
+	static char klog[2048];
+	static u32 klog_pos = 0;
+
+	static void klog_puts(const char *str) {
+	while (*str) {
+	    klog[klog_pos % sizeof(klog)] = *str++;
+	    klog_pos++;
+	}
+	}
+
+	void	syscall_handler	(	regs_t *r	)	{
+	switch (r->eax) {
+	case SYS_YIELD:
+	    task_sleep(0);
+	    r->eax = 0;
+	    break;
+	case SYS_GETTICKS:
+	    r->eax = pit_ticks;
+	    break;
+	case SYS_LOG:
+	    klog_puts((const char *)r->ebx);
+	    r->eax = 0;
+	    break;
+	case SYS_EXIT:
+	    tasks[cur_task].state = TS_EMPTY;
+	    __asm__ volatile("int $32");
+	    r->eax = 0;
+	    break;
+	default:
+	    r->eax = (u32)-1;
+	    break;
+	}
+	}
+
+	static u32 sys_call(u32 num, u32 a, u32 b, u32 c) {
+	u32 ret;
+	__asm__ volatile("int $0x80"
+	    : "=a"(ret) : "a"(num), "b"(a), "c"(b), "d"(c) : "memory");
+	return ret;
+	}
+
+#define MAX_FD 16
+	typedef struct { int used; u32 cluster; u32 pos; u32 size; } fd_t;
+	static fd_t fd_tab[MAX_FD];
+
+	static int vfs_open(const char *path) {
+	if (g_fs.bs.bpb_sectors_per_cluster == 0) return -1;
+	u32 cl = fat32_get_cluster(&g_fs, path);
+	if (cl < 2) return -1;
+	for (int i = 0; i < MAX_FD; i++) {
+	    if (!fd_tab[i].used) {
+	        fd_tab[i].used = 1;
+	        fd_tab[i].cluster = cl;
+	        fd_tab[i].pos = 0;
+	        fd_tab[i].size = 0xFFFFFFFFu;
+	        return i;
+	    }
+	}
+	return -1;
+	}
+
+	static u32 vfs_next_cluster(u32 cur) {
+	u8 fatb[512];
+	u32 fs_ = g_fs.bs.bpb_fat_start_sector + (cur * 4) / 512;
+	ata_read_sector_data(fs_, fatb);
+	return *(u32 *)(fatb + (cur * 4) % 512);
+	}
+
+	static int vfs_read(int fd, u8 *buf, u32 n) {
+	if (fd < 0 || fd >= MAX_FD || !fd_tab[fd].used) return -1;
+	if (g_fs.bs.bpb_sectors_per_cluster == 0) return -1;
+	u32 spc = g_fs.bs.bpb_sectors_per_cluster;
+	u32 clbytes = spc * 512;
+	u32 cur = fd_tab[fd].cluster;
+	u32 skip = fd_tab[fd].pos;
+	while (skip >= clbytes) {
+	    cur = vfs_next_cluster(cur);
+	    if (cur < 2 || cur >= 0x0FFFFFF8) return 0;
+	    skip -= clbytes;
+	}
+	u32 total = 0;
+	while (total < n) {
+	    if (cur < 2 || cur >= 0x0FFFFFF8) break;
+	    u32 sector = g_fs.bs.data_start + (cur - 2) * spc + skip / 512;
+	    u32 off = skip % 512;
+	    u8 sec[512];
+	    ata_read_sector_data(sector, sec);
+	    u32 cp = 512 - off;
+	    if (cp > n - total) cp = n - total;
+	    memcpy(buf + total, sec + off, cp);
+	    total += cp;
+	    skip += cp;
+	    if (skip >= clbytes) { skip = 0; cur = vfs_next_cluster(cur); }
+	}
+	fd_tab[fd].pos += total;
+	return (int)total;
+	}
+
+	static int vfs_close(int fd) {
+	if (fd < 0 || fd >= MAX_FD || !fd_tab[fd].used) return -1;
+	fd_tab[fd].used = 0;
+	return 0;
+	}
+
+#define WQ_SIZE 8
+	typedef struct { int head, tail; int q[WQ_SIZE]; } waitq_t;
+	static waitq_t net_wq = {0, 0, {0}};
+
+	static void wq_wake(waitq_t *wq) {
+	if (wq->head != wq->tail) {
+	    int t = wq->q[wq->tail & (WQ_SIZE - 1)];
+	    wq->tail++;
+	    if (t >= 0 && t < MAX_TASKS) tasks[t].state = TS_READY;
+	}
+	}
+
+	static void wq_sleep(waitq_t *wq) {
+	int me = cur_task;
+	wq->q[wq->head & (WQ_SIZE - 1)] = me;
+	wq->head++;
+	tasks[me].state = TS_SLEEPING;
+	tasks[me].wake = 0xFFFFFFFFu;
+	__asm__ volatile("int $32");
 	}
 
 		static	void init_idt  (   void   ) {
@@ -1106,11 +1328,21 @@ else  if (  c   >= ' '   &&  c   <=   '~' )	{ if  (	text_len   <  511   )   text
     g_disk_init = 1;
     net_init   ( ) ;
     vbe_init  ( ) ;
+	backbuf = (u8 *)kmalloc((u32)scr_h * (u32)pitch);
 		init_font   (  )  ;
 	boot_splash  (  ) ;
 		win_x = (   scr_w	-   win_w )   / 2	;
         win_y   = (   scr_h	-  win_h -  50   )	/	2  ;
 remap_pic   (	)  ;  init_idt	(	)   ;	init_ps2   (	)  ;  ;		pit_init	(  )  ;
+		for (int ti = 0; ti < MAX_TASKS; ti++) tasks[ti].state = TS_EMPTY;
+		tasks[0].state = TS_RUNNING; tasks[0].id = 0;
+		tasks[0].name[0] = 'k'; tasks[0].name[1] = 'e'; tasks[0].name[2] = 'r';
+		tasks[0].name[3] = 'n'; tasks[0].name[4] = 'e'; tasks[0].name[5] = 'l';
+		tasks[0].name[6] = 0;
+		task_create(idle_task, "idle");
+		asm  volatile   (	"sti" )	;
+		sched_on = 1;
+	klog_puts("nexOS boot ok\n");
 		asm  volatile   (	"sti" )	;
 
 		int   prev_lbtn   =	0	;
