@@ -33,6 +33,16 @@ static inline void outsw(u16 port, const u16 *buf, int cnt) {
     __asm__ volatile("cld; rep; outsw" : "+S"(buf), "+c"(cnt) : "d"(port) : "memory");
 }
 
+static inline void outl(u16 port, u32 v) {
+    __asm__ volatile("outl %0, %1" : : "a"(v), "Nd"(port));
+}
+
+static inline u32 inl(u16 port) {
+    u32 v;
+    __asm__ volatile("inl %1, %0" : "=a"(v) : "Nd"(port));
+    return v;
+}
+
 static inline void memset(void *s, int c, u32 n) {
     u8 *p = (u8 *)s;
     for (u32 i = 0; i < n; i++) p[i] = (u8)c;
