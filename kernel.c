@@ -1682,6 +1682,7 @@ else  if (  c   >= ' '   &&  c   <=   '~' )	{ if  (	text_len   <  511   )   text
     usb_init   ( ) ;
     vbe_init  ( ) ;
 	backbuf = (u8 *)kmalloc((u32)scr_h * (u32)pitch);
+	wall_init();
 		init_font   (  )  ;
 	boot_splash  (  ) ;
 		win_x = (   scr_w	-   win_w )   / 2	;
