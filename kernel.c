@@ -536,6 +536,53 @@ draw_pixel  (   x   ,   y  + i ,  light	)  ;
 #define COL_TERMBG  0x001E1E2E
 #define COL_TERMFG  0x00CDD6F4
 
+#define WALL_LBA 256
+#define WALL_W 1024
+#define WALL_H 768
+#define WALL_SECTORS 4608
+static	u8	*	wallpaper	=	0	;
+static	int	wall_on	=	0	;
+static	u8	wall_sec[512];
+
+	static void wall_init(void) {
+	wall_on = 0; wallpaper = 0;
+	if (scr_w != WALL_W || scr_h != WALL_H) return;
+	if (bpp != 24 && bpp != 32) return;
+	u8 *buf = (u8 *)kmalloc(16 + (u32)WALL_W * WALL_H * 3);
+	if (!buf) return;
+	for (u32 i = 0; i < WALL_SECTORS; i++) {
+	    ata_read_sector_data(WALL_LBA + i, wall_sec);
+	    memcpy(buf + i * 512, wall_sec, 512);
+	}
+
+	if (buf[0] != 'N' || buf[1] != 'E' || buf[2] != 'X' || buf[3] != 'O' ||
+	    buf[4] != 'S' || buf[5] != 'W' || buf[6] != '0' || buf[7] != '1') return;
+	u32 w = *(u32 *)(buf + 8), h = *(u32 *)(buf + 12);
+	if (w != WALL_W || h != WALL_H) return;
+	wallpaper = buf;
+	wall_on = 1;
+	}
+
+	static void blit_wallpaper(int dx, int dy, int w, int h) {
+	if (!wall_on || !wallpaper) { fill_rect(dx, dy, w, h, COL_BG); return; }
+	int x2 = dx + w, y2 = dy + h;
+	if (dx < 0) dx = 0;
+	if (dy < 0) dy = 0;
+	if (x2 > scr_w) x2 = scr_w;
+	if (y2 > scr_h) y2 = scr_h;
+	if (dx >= x2 || dy >= y2) return;
+	for (int row = dy; row < y2; row++) {
+	    u8 *src = wallpaper + 16 + ((u32)(row * WALL_W + dx)) * 3;
+	    u8 *dst = lfb + row * pitch + dx * bpp_bytes;
+	    for (int col = dx; col < x2; col++) {
+	        u8 r = src[0], g = src[1], b = src[2]; src += 3;
+	        u32 p = ((u32)r << r_pos) | ((u32)g << g_pos) | ((u32)b << b_pos);
+	        dst[0] = p & 0xFF; dst[1] = (p >> 8) & 0xFF; dst[2] = (p >> 16) & 0xFF;
+	        dst += bpp_bytes;
+	    }
+	}
+	}
+
 static int	win_x   ,  win_y  ,  win_w =	500   , win_h =   350  ;
 static int	win_open	=	1	;
 static int browser_open = 0;
