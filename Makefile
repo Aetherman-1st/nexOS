@@ -43,10 +43,17 @@ kernel.tmp: kernel_entry.o ata.o fat32.o pci.o acpi.o usb.o net.o kernel.o link.
 kernel.bin: kernel.tmp
 	$(OBJCOPY) -O binary kernel.tmp $@
 
-nexos.img: boot.bin kernel.bin
-	dd if=/dev/zero of=$@ bs=512 count=512 2>/dev/null
+WALL_LBA := 256
+WALL_SECTORS := 4608
+
+wall.bin: wallpaper.jpg
+	python3 -c "from PIL import Image; im = Image.open('wallpaper.jpg').convert('RGB'); tw, th = 1024, 768; s = max(tw / im.width, th / im.height); nw, nh = int(im.width * s + 0.5), int(im.height * s + 0.5); im = im.resize((nw, nh), Image.LANCZOS); x = (nw - tw) // 2; im = im.crop((x, 0, x + tw, th)); px = im.tobytes(); open('wall.bin','wb').write(b'NEXOSWP01' + tw.to_bytes(4,'little') + th.to_bytes(4,'little') + px)"
+
+nexos.img: boot.bin kernel.bin wall.bin
+	dd if=/dev/zero of=$@ bs=512 count=4864 2>/dev/null
 	dd if=boot.bin    of=$@ bs=512 count=1 conv=notrunc 2>/dev/null
 	dd if=kernel.bin  of=$@ bs=512 seek=1 conv=notrunc 2>/dev/null
+	dd if=wall.bin    of=$@ bs=512 seek=$(WALL_LBA) conv=notrunc 2>/dev/null
 
 run: nexos.img
 	$(QEMU) -drive format=raw,file=nexos.img -device rtl8139,netdev=n0 -netdev user,id=n0 -vga vmware -m 256
