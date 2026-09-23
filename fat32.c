@@ -69,13 +69,15 @@ int fat32_list_dir(fat32_fs_t *fs, u32 cluster, int (*cb)(const char *, u32, int
         if (entries[i].name[0] == 0xE5) continue;
 
         char name[13] = {0};
+        int ni = 0;
         for (int j = 0; j < 8 && entries[i].name[j] != ' '; j++)
-            name[j] = entries[i].name[j];
+            if (ni < 12) name[ni++] = entries[i].name[j];
         if (entries[i].ext[0] != ' ' && entries[i].ext[0] != 0) {
-            strcat(name, ".");
+            if (ni < 12) name[ni++] = '.';
             for (int j = 0; j < 3 && entries[i].ext[j] != ' '; j++)
-                strcat(name, &entries[i].ext[j]);
+                if (ni < 12) name[ni++] = entries[i].ext[j];
         }
+        name[ni] = 0;
 
         int is_dir = entries[i].attrib & ATTRIB_DIRECTORY;
         if (cb(name, entries[i].file_size, is_dir) != 0) break;
@@ -109,13 +111,15 @@ u32 fat32_get_cluster(fat32_fs_t *fs, const char *path) {
         if (entries[i].name[0] == 0xE5) continue;
 
         char name[13] = {0};
+        int ni = 0;
         for (int j = 0; j < 8 && entries[i].name[j] != ' '; j++)
-            name[j] = entries[i].name[j];
+            if (ni < 12) name[ni++] = entries[i].name[j];
         if (entries[i].ext[0] != ' ') {
-            strcat(name, ".");
+            if (ni < 12) name[ni++] = '.';
             for (int j = 0; j < 3 && entries[i].ext[j] != ' '; j++)
-                strcat(name, &entries[i].ext[j]);
+                if (ni < 12) name[ni++] = entries[i].ext[j];
         }
+        name[ni] = 0;
 
         if (strcmp(name, path) == 0) {
             return (u32)((entries[i].first_cluster_high << 16) | entries[i].first_cluster_low);
