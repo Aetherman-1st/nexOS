@@ -49,12 +49,13 @@ static inline int ata_read_sector(u32 lba, u8 *buf) {
     outb(ATA_DEVICE,  ATA_DEV_MASTER | ((lba >> 24) & 0x0F));
     outb(ATA_COMMAND, ATA_READ);
 
-    for (;;) {
+    for (int t = 0; t < 1000000; t++) {
         u8 s = inb(ATA_STATUS);
         if (s & 0x01) return -1;
         if (s & 0x08) break;
     }
 
+    if ((inb(ATA_STATUS) & 0x08) == 0) return -1;
     insw(ATA_BASE, (u16 *)buf, 256);
     return 0;
 }
@@ -68,13 +69,19 @@ static inline int ata_write_sector(u32 lba, const u8 *buf) {
     outb(ATA_DEVICE,  ATA_DEV_MASTER | ((lba >> 24) & 0x0F));
     outb(ATA_COMMAND, ATA_WRITE);
 
-    for (;;) {
+    for (int t = 0; t < 1000000; t++) {
         u8 s = inb(ATA_STATUS);
         if (s & 0x01) return -1;
         if (s & 0x08) break;
     }
 
+    if ((inb(ATA_STATUS) & 0x08) == 0) return -1;
     outsw(ATA_BASE, (u16 *)buf, 256);
+    for (int t = 0; t < 1000000; t++) {
+        u8 s = inb(ATA_STATUS);
+        if (s & 0x01) return -1;
+        if ((s & 0x80) == 0) break;
+    }
     return 0;
 }
 
