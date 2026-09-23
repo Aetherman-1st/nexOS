@@ -4,7 +4,7 @@ LD       := ld
 OBJCOPY  := objcopy
 QEMU     := qemu-system-i386
 
-CFLAGS   := -m32 -ffreestanding -nostdlib -fno-pie -O2
+CFLAGS   := -m32 -ffreestanding -nostdlib -fno-pie -O2 -fleading-underscore
 LDFLAGS  := -m elf_i386 -N -e _start -T link.ld
 
 all: nexos.img

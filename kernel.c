@@ -196,15 +196,20 @@ draw_pixel  (   x   ,   y  + i ,  light	)  ;
 	}
   }
 
-#define COL_BG      0x00C96A12
-#define COL_TASKBAR 0x001B1D22
-#define COL_TITLE   0x00E87511
-#define COL_WINBG   0x00F0F0F0
-#define COL_BTN     0x002A2D33
-#define COL_ACCENT  0x00FF9F43
-#define COL_MUTED   0x007E858F
-#define COL_WHITE   0x00FFFFFF
-#define COL_BLACK   0x00000000
+#define COL_BG      0x001E1E2E
+#define COL_TASKBAR 0x00181825
+#define COL_TITLE   0x00313244
+#define COL_WINBG   0x00313244
+#define COL_BTN     0x0045475A
+#define COL_ACCENT  0x0089B4FA
+#define COL_MUTED   0x006C7086
+#define COL_WHITE   0x00CDD6F4
+#define COL_TEXT    0x00CDD6F4
+#define COL_BLACK   0x00CDD6F4
+#define COL_SCRN    0x00000000
+#define COL_RED     0x00F38BA8
+#define COL_TERMBG  0x001E1E2E
+#define COL_TERMFG  0x00CDD6F4
 
 static int	win_x   ,  win_y  ,  win_w =	500   , win_h =   350  ;
 static int	win_open	=	1	;
@@ -226,7 +231,7 @@ static   int  term_message  = 0  ;
 		static	int paint_x =  170  ,   paint_y   = 90  , paint_w =	430  ,	paint_h =	300  ;
 static   u8	paint_canvas	[ 80 *   50 ] ;
 static   int paint_ready = 0	;
-static	u32  paint_color =   0x00E87511 ;
+static	u32  paint_color =   0x0089B4FA ;
   static  int	desktop_ready	=  0 ;
        static   int   painted_win_x	,	painted_win_y  ;
       static	int	painted_paint_open	=	0  ;
@@ -319,11 +324,11 @@ draw_str   (   13  , 234  ,  "TERMINAL" , COL_WHITE  )  ;
 }
 
 static  void   draw_file_manager  (	void	) {
-        fill_rect  (   file_x  +   3	,   file_y + 4 , file_w   ,	file_h  , 0x004A4D55 ) ;
+        fill_rect  (   file_x  +   3	,   file_y + 4 , file_w   ,	file_h  , COL_TERMBG ) ;
        fill_rect (	file_x ,	file_y	,   file_w  ,  file_h	, COL_WINBG  )  ;
   fill_rect (   file_x , file_y   ,	file_w  ,	28   ,  COL_TITLE	)	;
       draw_str   ( file_x   +   10   ,   file_y  + 8  ,	"FILE MANAGER"   ,	COL_WHITE  )   ;
-	fill_rect (	file_x   +   file_w   -   28 , file_y	+   5	,	18 , 17	,	0x00CC3333	)	;
+	fill_rect (	file_x   +   file_w   -   28 , file_y	+   5	,	18 , 17	,	COL_RED	)	;
       draw_str	( file_x   + file_w   -   25	,   file_y	+  6  ,	"X"	,	COL_WHITE	)	;
  draw_str	(  file_x  +  18  ,  file_y   +	48	,   "NAME" ,  COL_MUTED  )	;
       draw_str  (	file_x   +  270  ,   file_y +	48  ,  "TYPE"	,  COL_MUTED	)   ;
@@ -353,26 +358,26 @@ static const char * term_msg [ ] =	{
 	}  ;
 
 		static void  draw_terminal (  void )  {
-	fill_rect  (	terminal_x	+  3  ,	terminal_y + 4	,   terminal_w	,   terminal_h  ,   0x004A4D55	) ;
-   fill_rect   (	terminal_x	,	terminal_y	, terminal_w , terminal_h ,  0x00131818 )	;
- fill_rect	(  terminal_x  , terminal_y ,   terminal_w   ,	28	, COL_TITLE  ) ;
-   draw_str   (	terminal_x  +  10  , terminal_y	+  8  ,	"TERMINAL"  , COL_WHITE   ) ;
-fill_rect   ( terminal_x	+ terminal_w   -	28  ,   terminal_y  +   5	, 18	,   17	,	0x00CC3333	)   ;
-draw_str ( terminal_x +	terminal_w - 25  ,   terminal_y  +   6	,	"X" ,	COL_WHITE   )  ;
-        draw_str	(   terminal_x  +   14	, terminal_y  +  48  ,   "nexOS terminal - type HELP"	, 0x0000FF00   ) ;
+	fill_rect  (	terminal_x	+  3  ,	terminal_y + 4	,   terminal_w	,   terminal_h  ,   COL_TERMBG  ) ;
+    fill_rect   (	terminal_x	,	terminal_y	, terminal_w , terminal_h ,  COL_TERMBG  ) ;
+    fill_rect	(  terminal_x  , terminal_y ,   terminal_w   ,	28	, COL_TITLE  ) ;
+    draw_str   (	terminal_x  +  10  , terminal_y	+  8  ,	"TERMINAL"  , COL_TERMFG   ) ;
+    fill_rect   ( terminal_x	+ terminal_w   -	28  ,   terminal_y  +   5	, 18	,   17	,	COL_RED  )   ;
+    draw_str ( terminal_x +	terminal_w - 25  ,   terminal_y  +   6	,	"X" ,	COL_TERMFG   ) ;
+    draw_str	(   terminal_x  +   14	, terminal_y  +  48  ,   "nexOS terminal - type HELP"	,  COL_TERMFG   ) ;
 		if   (   term_message >= 1  &&	term_message	<=  10	)
-      draw_str  (   terminal_x   +  14  ,	terminal_y   +	64  , term_msg [  term_message ]  ,	0x0000FF00 ) ;
-        draw_str  (	terminal_x +	14	, terminal_y  +  88	,	">" ,	0x0000FF00   ) ;
+      draw_str  (   terminal_x   +  14  ,	terminal_y   +	64  , term_msg [  term_message ]  ,	COL_TERMFG ) ;
+    draw_str  (	terminal_x +	14	, terminal_y  +  88	,	">" ,	COL_TERMFG   ) ;
 	for  ( int  i =   0	;  i < term_len ;  i	++   )
-draw_char	( terminal_x  +	26  +	i   *	8	,	terminal_y	+   88	,
-      font_map   [  (  u8  )	term_buf [   i   ] ] ,	0x0000FF00 )   ;
+    draw_char	( terminal_x  +	26  +	i   *	8	,	terminal_y	+   88	,
+      font_map   [  (  u8  )	term_buf [   i   ] ] ,	COL_TERMFG )   ;
 	}
 
 	static void	draw_window   (   void	)  {
-		draw_3d_border	(  win_x  ,   win_y   , win_w   , win_h  ,	COL_WINBG	,   COL_WHITE   ,   0x00808080   )  ;
+		draw_3d_border	(  win_x  ,   win_y   , win_w   , win_h  ,	COL_WINBG	,   COL_WHITE   ,   COL_MUTED   )  ;
 	fill_rect   ( win_x  , win_y   ,  win_w ,   30 ,	COL_TITLE )  ;
 draw_str ( win_x +   8  ,   win_y	+  8   , "nexOS v0.1"	,  COL_WHITE  )	;
-   fill_rect  (   win_x + win_w   -	22	,	win_y  +  4	,	18  , 17   , 0x00CC3333	)	;
+   fill_rect  (   win_x + win_w   -	22	,	win_y  +  4	,	18  , 17   , COL_RED	)	;
 		draw_str  (  win_x   +  win_w	-	19  ,   win_y	+  5  ,  "X"	,   COL_WHITE  )	;
         }
 
@@ -387,22 +392,22 @@ tx +=  10  ;
 if	(	tx   + 10 >  max_x )	{  tx	=	win_x   +  10   ;  ty  +=   12   ;	}
 }
 		}
-	fill_rect	(   tx  ,  ty	+ 1	,	6	,   8	,   COL_BLACK	)  ;
+	fill_rect	(   tx  ,  ty	+ 1	,	6	,   8	,   COL_SCRN	)  ;
 	}
 
 	static   void draw_paint	(	void )  {
 	draw_3d_border  (   paint_x	,  paint_y ,   paint_w ,   paint_h   ,   COL_WINBG   ,
-	COL_WHITE ,	0x00808080 )  ;
+	COL_WHITE ,	COL_MUTED )  ;
       fill_rect	(  paint_x ,  paint_y   ,	paint_w  ,	27 ,   COL_TITLE  )  ;
        draw_str (  paint_x +   10 , paint_y   +	8  , "PAINT"	,	COL_WHITE   )   ;
-		fill_rect   (   paint_x   +  paint_w -  28 ,	paint_y	+   5  ,	18   ,   17 ,	0x00CC3333 )	;
+		fill_rect   (   paint_x   +  paint_w -  28 ,	paint_y	+   5  ,	18   ,   17 ,	COL_RED )	;
 draw_str  (	paint_x  +	paint_w   -  25   ,	paint_y	+ 6	,  "X" ,	COL_WHITE	)   ;
-		u32	colors	[	6	]   = {	0x00E87511  , 0x00D93434  ,  0x002B7FFF ,  0x001FA463	,	0x008B48C7   , 0x00000000	}  ;
+		u32	colors	[	6	]   = {	0x0089B4FA  , 0x00A6E3A1  ,  0x0089B4FA ,  0x00A6E3A1	,	0x00F38BA8   , 0x00000000	}  ;
 	for   ( int  ci   =  0   ; ci  <	6 ;   ci	++   )
    fill_rect   (  paint_x	+  12	+ ci  *	22   ,  paint_y	+   30   ,	18 ,	6  ,	colors	[  ci ]  ) ;
 fill_rect  ( paint_x  + 10  ,   paint_y	+ 38 , 400	,	250	,   COL_WHITE	) ;
 	draw_3d_border   (   paint_x	+  9  ,  paint_y +  37  ,	402	,	252 ,   COL_WINBG	,
-      COL_WHITE  , 0x00808080   ) ;
+      COL_WHITE  , COL_MUTED   ) ;
        for	(	int	py =	0   ;	py	<   50  ;  py  ++  )
 		for  (  int  px  = 0   ;   px	<   80   ; px ++ )
 		if  (	paint_canvas	[	py *  80   +	px ] )
@@ -413,22 +418,22 @@ draw_str   (  paint_x  +  10   , paint_y +  paint_h	- 9 ,   "DRAW WITH LEFT MOUS
 
 	static  void draw_menu ( void	)	{
      int	mx  =	6   ,	my   = scr_h	-  tb_h  - 152 ;
-draw_3d_border   (   mx   , my ,   152 ,  152  ,  COL_WINBG  ,  COL_WHITE  , 0x00808080   ) ;
+draw_3d_border   (   mx   , my ,   152 ,  152  ,  COL_WINBG  ,  COL_WHITE  , COL_MUTED   ) ;
       draw_str   (  mx	+	8   ,   my	+  10	,  "TERMINAL" ,	COL_BLACK	) ;
      draw_str  (	mx   +   8	,  my  +   24  ,  "NOTEPAD"  ,	COL_BLACK )   ;
 draw_str ( mx  +	8	, my   + 38	,   "ABOUT"   ,   COL_BLACK  ) ;
-		fill_rect	(  mx + 6	, my +	76   ,  140  ,  26  ,   0x00CC3333  )   ;
+		fill_rect	(  mx + 6	, my +	76   ,  140  ,  26  ,   COL_RED  )   ;
 		draw_str	(	mx	+  18  ,   my +  85 ,	"SHUTDOWN"   ,	COL_WHITE	)  ;
   }
 
 static  void  boot_splash (  void )   {
-       clear_screen	(   COL_BLACK  )	;
+	clear_screen	(   COL_SCRN  )	;
 int	title_x  =   (	scr_w  -  128  ) /	2 ;
       int  bar_x	=	(  scr_w -  220   )	/	2   ;
 int	bar_y  =	scr_h   /  2	+  24   ;
 draw_str (   title_x ,   scr_h	/   2  -  18  ,   "WELCOME TO nexOS"   , COL_WHITE )   ;
 	draw_str	(   (  scr_w	-	150	)  /   2   ,	scr_h /	2  - 4 ,	"BY YAZEED OMARI"   ,	COL_MUTED	) ;
-	draw_3d_border (	bar_x  ,  bar_y  ,  220	, 12 , COL_BLACK   , COL_MUTED , COL_BLACK )	;
+	draw_3d_border (	bar_x  ,  bar_y  ,  220	, 12 , COL_BTN   , COL_MUTED , COL_BTN )	;
 	for  ( int	i	=	0	;	i   <=	10	; i ++  )  {
 		fill_rect   (   bar_x +	3   ,   bar_y +	3	,  i * 21  ,  6   ,	COL_ACCENT ) ;
 		for  (   volatile   u32	wait	= 0  ;	wait	< 33000000 ; wait   ++   ) asm volatile  (   "nop"  )	;
@@ -540,8 +545,8 @@ else   {   mp [   mc ++   ]   =  d	;   if ( mc   ==   3  )	{   mc = 0 ;
 		if   ( !	(  (   mp   [   0 ]  &	0x40 )   ||  (	mp	[	0	] &  0x80 )  )	)	{
 int	xd   = mp [	1 ]  ,   yd   =   mp   [	2	]  ;
   if  (  mp	[	0 ]   &	0x10	)   xd	-=   256	;	if (   mp   [  0 ] &  0x20	)  yd  -=   256	;
-       mouse_buttons =  mp	[   0  ]  &   7   ;	mouse_x  +=	xd	;	mouse_y	-=  yd  ;
-        if  (  mouse_x  <  0   )  mouse_x =   0	;  if (	mouse_x	> scr_w   -  9	)	mouse_x   =	scr_w	-	9   ;
+       mouse_buttons =  mp	[   0  ]  &   7   ;	mouse_x  +=	xd	;	mouse_y	-=  yd ;
+        if ( mouse_x  <  0   )  mouse_x =   0	;  if (	mouse_x	> scr_w   -  9	)	mouse_x   =	scr_w	-	9   ;
  if  (   mouse_y  <   0   )   mouse_y =	0   ;  if	(   mouse_y  >	scr_h  - 13	) mouse_y =	scr_h	- 13	;
 	mouse_updated  =  1   ;
 } }	}  }  }
