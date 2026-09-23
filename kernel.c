@@ -808,7 +808,8 @@ draw_str   (  paint_x  +  10   , paint_y +  paint_h	- 9 ,   "DRAW WITH LEFT MOUS
 
 	static  void draw_menu ( void	)	{
       int	mx  =	6   ,	my   = scr_h	-  tb_h  - 152 ;
- draw_3d_border   (   mx   , my ,   152 ,  152  ,  COL_WINBG  ,  COL_WHITE  , COL_MUTED   ) ;
+  draw_shadow   (   mx   , my ,   152 ,  152  )  ;
+  fill_rounded   (   mx   , my ,   152 ,  152  ,  10	,  COL_WINBG  )  ;
        draw_str   (  mx	+	8   ,   my	+  10	,  "TERMINAL" ,	COL_BLACK	) ;
       draw_str  (	mx   +   8	,  my  +   24  ,  "NOTEPAD"  ,	COL_BLACK )   ;
  draw_str ( mx  +	8	, my   + 38	,   "ABOUT"   ,   COL_BLACK  ) ;
@@ -832,8 +833,9 @@ draw_str (   title_x ,   scr_h	/   2  -  18  ,   "WELCOME TO nexOS"   , COL_WHIT
 }
 
 static void draw_browser_window(void) {
-    fill_rect(browser_x, browser_y, browser_w, browser_h, COL_WINBG);
-    fill_rect(browser_x, browser_y, browser_w, 24, COL_TITLE);
+    draw_shadow(browser_x, browser_y, browser_w, browser_h);
+    fill_rounded(browser_x, browser_y, browser_w, browser_h, 10, COL_WINBG);
+    fill_vgrad(browser_x, browser_y, browser_w, 24, mix_color(COL_TITLE, 0x00CDD6F4, 70), COL_TITLE);
     draw_str(browser_x + 8, browser_y + 6, "nexOS Browser", COL_TEXT);
     fill_rect(browser_x + browser_w - 32, browser_y + 3, 26, 18, COL_RED);
     draw_str(browser_x + browser_w - 29, browser_y + 4, "X", COL_TEXT);
